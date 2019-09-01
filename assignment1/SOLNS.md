@@ -1,4 +1,10 @@
 # Solutions to Assignment 1
+This is a simple module composed of ```main.py``` as well as an ```assets/``` directory containing extra 
+files necessary for the completion of this assignment.
+Run ```main.py``` via python3, it will then print out the results for the first exercise.
+It will then prompt the user to enter a string to determine if the char array 'abcd' is found within it.
+
+
 ## Questions from Handout
 1. An IDE stands for Integrated Development Environment. 
 Used to develop software, an IDE also offers unique and custom features for the benefit of the user's workflow
