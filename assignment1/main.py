@@ -1,7 +1,7 @@
 import numpy as np
 """this module solves the problems layed out in exersize 1 and 2 """
 # read text file
-with open('datafile.txt','r') as f:
+with open('assets/datafile.txt','r') as f:
     b = eval(f.read())
 
 # brute force approach to finding the most frequent number
@@ -13,10 +13,7 @@ for i in b:
         most_frequent = i
 
 # find all of the even numbers
-even_numbers = []
-for i in set(b):
-    if i % 2 == 0:
-        even_numbers.append(i)
+even_numbers = [i for i in set(b) if i % 2 == 0]
 
 # print results
 print("Maximum from list:", max(b))
