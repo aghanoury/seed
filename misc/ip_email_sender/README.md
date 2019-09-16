@@ -12,3 +12,5 @@ So on my pi, it would look like
 (sleep6;python3 /home/pi/Developer/email_sender.py)&
 ```
 
+We have to first wait at least 6 seconds for the wifi to connect, and using the ````&``` to put the process in the background
+
