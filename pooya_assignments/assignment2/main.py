@@ -3,7 +3,6 @@ import busio
 from smbus2 import SMBus
 import adafruit_character_lcd.character_lcd_rgb_i2c as character_lcd
 import time
-from subprocess import Popen, PIPE
 
 # init lcd screen
 lcd_columns = 16
@@ -56,17 +55,27 @@ def sendToDuino(data):
             lcd.message = str(value) + ' V'
             return
         try:
+
+            # attempt to write bytes to arduino
             byte_array = [ord(i) for i in data]
             bus.write_i2c_block_data(address, 1, byte_array)
-            time.sleep(0.1)
+            # time.sleep(0.1) # questionable delay
+
+            # get the response
             response = bus.read_i2c_block_data(address, 2,len(byte_array))
             payload = ''
+
+            #convert bytes to array chars (string)
             for i in response:
                 payload += chr(i)
         except:
+
+            # if something failes in the read/write process
+            # Set payload
             print("Failed to do something useful")
-            payload = 'Failed to send/receive'
+            payload = 'Failed to \nsend/receive'
             
+        # update lcd
         lcd.clear()
         lcd.message = payload
         # except:
