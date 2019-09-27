@@ -6,7 +6,7 @@ import adafruit_character_lcd.character_lcd_rgb_i2c as character_lcd
 import time
 from subprocess import Popen, PIPE
 
-class Communicator(object):
+class Comms(object):
     
     lcd = None # lcd object
     bus = None # bus obj
