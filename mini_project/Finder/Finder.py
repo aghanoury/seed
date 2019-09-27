@@ -1,3 +1,12 @@
+"""
+Finder.py
+Author: Jason Matney
+
+This class uses the Raspberry Pi camera to detect ArUco markers and determine which quadrant their centers fall in.
+The find_markers method returns data like so:
+[(ID, Quadrant), (ID, Quadrant), ...]
+"""
+
 import numpy.core.multiarray
 from picamera import PiCamera
 from time import sleep
@@ -11,7 +20,6 @@ aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
 class Finder:
     def __init__(self):
         self.camera = PiCamera()
-        #camera.resolution = (800, 600)
         self.camera.resolution = (1920, 1080)
         self.camera.exposure_mode = 'off'
         self.camera.shutter_speed = 10000
