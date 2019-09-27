@@ -1,1 +1,1 @@
-from Finder import Finder
+#from Finder import Finder
