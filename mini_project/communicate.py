@@ -12,6 +12,7 @@ class Communicator(object):
     bus = None # bus obj
     address = 0
 
+
     def __init__(self, init_string=None):
         
         # init lcd display
@@ -36,28 +37,50 @@ class Communicator(object):
         self.bus = SMBus(1)
         self.address = 0x08
 
+
+    def set_screen_color(self, rgb):
+        # rgb should be a list containing the rgb values respectively
+        # you can also pass a string such that -> "r g b"
+        if type(rgb) == str:
+            rgb = rgb.split()
+        
+        if len(rgb) != 3:
+            print("invalid color dimensions")
+            print('Use color command -> "color r g b"')
+            return
+
+        # change the screen color
+        try:
+            self.lcd.color = [int(i) for i in rgb]
+            print("Set screen color")
+        except:
+            print("Error setting screen color")
+        
+
+
+    # extraneous function, future version may deprecate
     def input_handler(self, command):
 
-        if command == 'color':
-            color = input("Enter a sequence of rgb values: ")
-            color = color.split(' ')
-            color_vals = [int(i) for i in color]
-            self.lcd.color = color_vals
+        # empty string?
+        if command == "":
+            print("ERR: empty command")
+            return
 
-        elif command == 'clear':
+        # if not already a list, convert to it
+        if type(command) != list:
+            command = command.split()
+
+        # check for keyword special arguments
+        if command[0] == 'color':
+            self.set_screen_color(command[1:])
+                  
+        elif command[0] == 'clear':
             self.lcd.clear()
 
 
-        if isinstance(command, int):
-            print("create integer handler")
 
-        elif isinstance(command, str):
-            print("create string handler")
-
-        elif isinstance(command, list):
-
-
-    def sendData(self,data):
+    def sendData(self, data):
+        
         if isinstance(data, int):
             self.bus.write_byte_data(self.address, 0, data) 
             response = self.bus.read_byte_data(self.address,2)
@@ -112,10 +135,8 @@ if __name__ == "__main__":
     
     while True:
         command = input("Enter a command: ")
-         if command == 'exit':
+        if command == 'exit':
             break
-
-        obj.input_handler(command)
 
         # first try to convert input to an int
        
@@ -125,7 +146,6 @@ if __name__ == "__main__":
             pass
 
         obj.input_handler(command)
-
     
 
 
