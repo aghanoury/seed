@@ -1,12 +1,20 @@
-from src import Finder as find
-from src import Comms as comm
+from src import Finder
+from src import Comms 
+import time
 
-obj = comm()
+
+comm = Comms()
 print("Successfull init of Comms class")
 
-f = find()
+f = Finder()
 print("Successfull init of Finder class")
 
+# f.find_markers(0.5)
 
 
-print("This is main.py\nIt currently does nothing")
+while True:
+    target_position = input("Enter quadrant of ChArUco: ")
+    if target_position == 'exit':
+        print("exiting")
+        exit(0)
+    # comm.
