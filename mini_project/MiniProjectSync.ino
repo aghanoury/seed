@@ -13,6 +13,7 @@ float timeNow = 0;
 const float r = .05;
 const float d = 0.1;
 const float pi = 3.14159;
+// Variable for encoder positions. One full rotation of encoder is 1600 ticks.//
 const float tick = pi/800;
 const int sampTime = 5;
 float xNew = 0;
@@ -34,15 +35,17 @@ float elapsedTime = 0.0000;
 float lastTime = 0.0000;
 float lastError = 0.0000;
 float rateError = 0.0000;
-float Kp = 48.0000;
+float Kp = 100.0000;
 float Ki = 21.0000;
 float Kd = 7.0000;
+// Variable for motor direction //
 bool direct = LOW;
+// Setting up Arduino pins for encoders. Pins 2 and 3 are interrupt pins.//
 Encoder knobLeft(3, 4);
 Encoder knobRight(2, 5);
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(250000);
   float pid(float positionCur, float elapsedTime, float setPoint);
   pinMode(4, OUTPUT);
   digitalWrite(4, HIGH);
@@ -52,7 +55,11 @@ void setup() {
   pinMode(10, OUTPUT);
   pinMode(12, INPUT);
 }
-
+//
+//
+////////////////////////// Function for the motor controller //////////////////////////
+// 
+//
 float pid(float positionCur, float currentTime, float setPoint)
 {
   Serial.print("Current Position = ");
@@ -86,19 +93,21 @@ void loop() {
   newRight = knobRight.read();
 
 //  
-//******** PID FUNction ********//
+//********************              Calling PID FUNction         *********************//
 //
-  actSignal = pid(phiOld, timeNow/1000, pi);
+  actSignal = pid(phiOld, timeNow/1000, (3*pi/2));
   if(actSignal < 0){
     direct = HIGH;
   }
   if(actSignal > 0){
     direct = LOW;
   }
-  
+  //// digitalWrite sets pin 7 HIGH or LOW for rotation direction and analogWrite sets pin 9 for PWM duty cycle value ///////
   digitalWrite(7, direct);
   analogWrite(9, abs(actSignal));
-
+//
+///// this statement computes positional and rotational data
+//
   if (newLeft != positionLeft || newRight != positionRight) 
   {
 
@@ -107,13 +116,6 @@ void loop() {
     xNew = xOld + cos(phiOld)*(r/2)*(deltaThetaR + deltaThetaL);
     yNew = yOld + sin(phiOld) * (r/2)*(deltaThetaR + deltaThetaL);
     phiNew = phiOld + (r/d)*(deltaThetaR - deltaThetaL);
-//    Serial.print("X = ");
-//    Serial.print(xNew);
-//    Serial.print(", Y = ");
-//    Serial.print(yNew);
-//    Serial.print(", phi = ");
-//    Serial.print(phiNew, 5);
-//    Serial.println();
     positionLeft = newLeft;
     positionRight = newRight;
     xOld = xNew;
@@ -134,6 +136,7 @@ void loop() {
     knobLeft.write(0);
     knobRight.write(0);
   }
+  ///// This waits for a set amount of time (sampTime) and computes angular veloctiy////
   while(millis() < timeNow + sampTime){
   }
   
@@ -142,19 +145,4 @@ void loop() {
   } else{
     angVel = 0;
   }
-
-  
-//  if (millis() >= 1000 && millis() <= 2000){
-//    analogWrite(9, 100);
-//    digitalWrite(7, LOW);
-////    Serial.print("Angular Velocity = ");
-//    Serial.print(angVel);
-////    Serial.print(" rad/s");
-//    Serial.println();
-//    time1 = millis();
-////    Serial.print("Time = ");
-//    Serial.print(time1);
-//    Serial.println();
-//  }
-
 }
