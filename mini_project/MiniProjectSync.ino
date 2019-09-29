@@ -6,6 +6,16 @@
 //Code Implementation: Upload the program to the Arduino and rotate the encoder to see the output on the Serial Monitor.
 //////--------------------------------------------------------------------------------------------------------------------------//////
 #include <Encoder.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+//LiquidCrystal_I2C lcd(0x20, 16, 2);
+
+// TODO: implement target changing protocol
+#define WRITE_ANGLE 0x09
+#define READ_ANGLE 0x0A
+// COMM globals
+uint8_t operation = 0;
 
 long positionLeft  = 0;
 long positionRight = 0;
@@ -28,21 +38,25 @@ float phiphi;
 float angVel;
 unsigned long time1 = 0;
 int count = 0;
-float error = 0.0000;
+float error = 0;
 int actSignal = 0;
-float cumError = 0.000;
-float elapsedTime = 0.0000;
-float lastTime = 0.0000;
-float lastError = 0.0000;
-float rateError = 0.0000;
-float Kp = 100.0000;
-float Ki = 21.0000;
-float Kd = 7.0000;
+float cumError = 0;
+float elapsedTime = 0;
+float lastTime = 0;
+float lastError = 0;
+float rateError = 0;
+float Kp = 100.0;
+float Ki = 21.0;
+float Kd = 7.0;
 // Variable for motor direction //
 bool direct = LOW;
 // Setting up Arduino pins for encoders. Pins 2 and 3 are interrupt pins.//
 Encoder knobLeft(3, 4);
 Encoder knobRight(2, 5);
+
+float targetAngle = 3*pi/2;
+
+
 
 void setup() {
   Serial.begin(250000);
@@ -54,6 +68,17 @@ void setup() {
   pinMode(9, OUTPUT);
   pinMode(10, OUTPUT);
   pinMode(12, INPUT);
+
+
+  Wire.begin(8);                // join i2c bus with address #8
+  Wire.onReceive(receiveEvent); // register event
+  Wire.onRequest(requestEvent); // might need this later
+
+//  lcd.init();
+//  lcd.backlight();
+//  lcd.setCursor(0,0);
+//  lcd.print("Trash");
+
 }
 //
 //
@@ -62,13 +87,13 @@ void setup() {
 //
 float pid(float positionCur, float currentTime, float setPoint)
 {
-  Serial.print("Current Position = ");
-  Serial.print(positionCur);
-  Serial.print(", Current Time = ");
-  Serial.print(currentTime);
-  Serial.print(", Set Point = ");
-  Serial.print(setPoint);
-  Serial.println();
+//  Serial.print("Current Position = ");
+//  Serial.print(positionCur);
+//  Serial.print(", Current Time = ");
+//  Serial.print(currentTime);
+//  Serial.print(", Set Point = ");
+//  Serial.print(setPoint);
+//  Serial.println();
     elapsedTime = currentTime - lastTime;
     lastTime = currentTime;
     error = setPoint - positionCur;
@@ -80,8 +105,8 @@ float pid(float positionCur, float currentTime, float setPoint)
       actSignal = 255;
     }
     
-    Serial.print("Actuating Signal = ");
-    Serial.println(actSignal);
+//    Serial.print("Actuating Signal = ");
+//    Serial.println(actSignal);
     return actSignal;
 }
 
@@ -95,7 +120,7 @@ void loop() {
 //  
 //********************              Calling PID FUNction         *********************//
 //
-  actSignal = pid(phiOld, timeNow/1000, (3*pi/2));
+  actSignal = pid(phiOld, timeNow/1000, targetAngle);
   if(actSignal < 0){
     direct = HIGH;
   }
@@ -145,4 +170,49 @@ void loop() {
   } else{
     angVel = 0;
   }
+}
+
+
+// ----- COMMS -------
+void requestEvent(){
+//  Serial.println("Enter Request");
+  if (operation == READ_ANGLE) {
+
+    long *target_pos_int = (long*) &phiOld;
+    uint8_t *float_bytes = new uint8_t[4];
+    
+    for (uint8_t i = 0; i < 4; i++){
+      float_bytes[i] = uint8_t(*target_pos_int >> (i << 3));
+    }
+    Wire.write(float_bytes, 4);
+
+    delete target_pos_int;
+    delete float_bytes;
+    
+  }
+//  Serial.println("Exit Request");
+}
+
+void receiveEvent() {
+//  Serial.println("Enter Receive");
+   // first byte is number of floats
+  operation = Wire.read();
+  if (operation == WRITE_ANGLE) {
+    
+    // second byte is operation
+    uint8_t floats = Wire.read();
+   
+    // allocate memory for float bytes
+    uint8_t *float_packets = new uint8_t[floats << 2];
+  
+    for (uint8_t i = 0; Wire.available(); i++){
+      float_packets[i] = uint8_t(Wire.read());
+  //    Serial.println(float_packets[i]);
+    }
+    targetAngle = *(float*) float_packets; 
+    delete float_packets;
+    
+//    Serial.println(target_angle);
+  }
+  
 }
