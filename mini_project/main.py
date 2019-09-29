@@ -52,7 +52,7 @@ while True:
         print(e)
         continue
     
-
+    
     packet = [comm.WRITE_ANGLE, quad_to_ang[target_position]]
     comm.sendData(packet)
     # comm.getData(comm.READ_ANGLE)
