@@ -1,4 +1,6 @@
 from Finder import Finder
 
 f = Finder()
-f.find_markers()
+result = f.find_markers()
+
+print(result)
