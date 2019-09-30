@@ -4,13 +4,23 @@ import busio
 from smbus2 import SMBus
 import adafruit_character_lcd.character_lcd_rgb_i2c as character_lcd
 import time
+import struct
 from subprocess import Popen, PIPE
 
-class Communicator(object):
+class Comms(object):
     
     lcd = None # lcd object
     bus = None # bus obj
     address = 0
+
+    # these constants serve as a the fist data byte in each
+    # i2c tranmission packet 
+    
+    """ protocol """
+    CHANGE_POS = 0x03
+    WRITE_ANGLE = 0x09
+    READ_ANGLE = 0x0A
+
 
     def __init__(self, init_string=None):
         
@@ -36,28 +46,105 @@ class Communicator(object):
         self.bus = SMBus(1)
         self.address = 0x08
 
+
+
+    def startup_color_sequence(self):
+        self.set_screen_color("100 0 0")
+        time.sleep(0.5)
+        self.set_screen_color("0 100 0")
+        time.sleep(0.5)
+        self.set_screen_color("0 0 100")
+        time.sleep(0.5)
+        self.set_screen_color("100 100 100")
+
+    def set_screen_color(self, rgb):
+        # rgb should be a list containing the rgb values respectively
+        # you can also pass a string such that -> "r g b"
+        if type(rgb) == str:
+            rgb = rgb.split()
+        
+        if len(rgb) != 3:
+            print("invalid color dimensions")
+            print('Use color command -> "color r g b"')
+            return
+
+        # change the screen color
+        try:
+            self.lcd.color = [int(i) for i in rgb]
+            print("Set screen color")
+        except:
+            print("Error setting screen color")
+        
+
+    # extraneous function, future version may deprecate
     def input_handler(self, command):
 
-        if command == 'color':
-            color = input("Enter a sequence of rgb values: ")
-            color = color.split(' ')
-            color_vals = [int(i) for i in color]
-            self.lcd.color = color_vals
+        # empty string?
+        if command == "":
+            print("ERR: empty command")
+            return
 
-        elif command == 'clear':
+        # if not already a list, convert to it
+        if type(command) != list:
+            command = command.split()
+
+        # check for keyword special arguments
+        if command[0] == 'color':
+            self.set_screen_color(command[1:])
+                  
+        elif command[0] == 'clear':
             self.lcd.clear()
 
+    
 
-        if isinstance(command, int):
-            print("create integer handler")
+    def getData(self, val):
+        if val == self.READ_ANGLE:
+            response = self.bus.read_i2c_block_data(self.address, val, 4)
+            b = struct.pack('BBBB', response[0],response[1],response[2], response[3])
+            val = struct.unpack('f',b)
+            print(val)
+            return val
 
-        elif isinstance(command, str):
-            print("create string handler")
 
-        elif isinstance(command, list):
+    # the most important
+    def sendData(self, data):
+        
+        payload = []
+
+        if type(data) != list:
+            print("data is not a string")
+            return
+            
+        payload.append(len(data[1:]))
+        # convert floating point values
+        for float_val in data[1:]:
+
+            if type(float_val) != float:
+                print("Data element is not of type float")
+                print("Send Operation aborted")
+                return
+
+            b = struct.pack('f', float_val)
+            t = struct.unpack('BBBB', b)
+            for byte in t:
+                payload.append(byte)
+
+        # print(payload)
+        self.bus.write_i2c_block_data(self.address, data[0], payload)
+        # time.sleep(1)
+        # response = self.bus.read_i2c_block_data(self.address, data[0]+1, 4)
+        # b = struct.pack('BBBB', response[0],response[1],response[2], response[3])
+        # val = struct.unpack('f',b)
+        # print(val)
+        # self.getData(self.READ_ANGLE)
+        
+        return
 
 
-    def sendData(self,data):
+
+
+
+        """ Deprecated below """
         if isinstance(data, int):
             self.bus.write_byte_data(self.address, 0, data) 
             response = self.bus.read_byte_data(self.address,2)
@@ -112,10 +199,8 @@ if __name__ == "__main__":
     
     while True:
         command = input("Enter a command: ")
-         if command == 'exit':
+        if command == 'exit':
             break
-
-        obj.input_handler(command)
 
         # first try to convert input to an int
        
@@ -125,7 +210,6 @@ if __name__ == "__main__":
             pass
 
         obj.input_handler(command)
-
     
 
 
