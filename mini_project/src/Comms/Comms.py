@@ -130,7 +130,10 @@ class Comms(object):
                 payload.append(byte)
 
         # print(payload)
-        self.bus.write_i2c_block_data(self.address, data[0], payload)
+        try:
+            self.bus.write_i2c_block_data(self.address, data[0], payload)
+        except:
+            print("Failed to transmit packet, did arduino crash?")
         # time.sleep(1)
         # response = self.bus.read_i2c_block_data(self.address, data[0]+1, 4)
         # b = struct.pack('BBBB', response[0],response[1],response[2], response[3])

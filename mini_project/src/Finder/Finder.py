@@ -32,10 +32,11 @@ class Finder:
 
         # Thresholding is used to convert to a binary image
         # Otsu's method maximizes contrast based on the input image
-        thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        # thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        thresh = cv2.equalizeHist(gray)
 
         # Use built-in detection method
-        x = aruco.detectMarkers(img, aruco_dict)
+        x = aruco.detectMarkers(thresh, aruco_dict)
 
         # Determine locations of quadrants in image
         mid_y, mid_x = gray.shape
