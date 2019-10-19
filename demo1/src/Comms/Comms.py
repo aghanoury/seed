@@ -112,7 +112,7 @@ class Comms(object):
         payload = []
 
         if type(data) != list:
-            print("data is not a string")
+            print("data is not a list")
             return
             
         payload.append(len(data[1:]))
