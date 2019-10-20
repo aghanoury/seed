@@ -18,7 +18,7 @@ class Comms(object):
     
     """ protocol """
     CHANGE_POS = 0x03
-    WRITE_ANGLE = 0x09
+    CHANGE_ANGLE = 0x09
     READ_ANGLE = 0x0A
 
 
@@ -129,18 +129,15 @@ class Comms(object):
             for byte in t:
                 payload.append(byte)
 
-        # print(payload)
+        if len(payload) > 32:
+            print("Attempting to send more than 32 bytes\nAborting Send")
+            return
+
         try:
             self.bus.write_i2c_block_data(self.address, data[0], payload)
         except:
             print("Failed to transmit packet, did arduino crash?")
-        # time.sleep(1)
-        # response = self.bus.read_i2c_block_data(self.address, data[0]+1, 4)
-        # b = struct.pack('BBBB', response[0],response[1],response[2], response[3])
-        # val = struct.unpack('f',b)
-        # print(val)
-        # self.getData(self.READ_ANGLE)
-        
+       
         return
 
 

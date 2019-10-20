@@ -43,8 +43,8 @@ The method also embeds some extra information regarding the size of the packet a
 Such packet has the following format
 
 Byte:
-1. Number of floating point values following the instruction
-2. Instruction
+1. Instruction
+2. Number of floating point values following the instruction
 3. Floating-point value 1: Byte 0
 4. Floating-point value 1: Byte 1
 5. Floating-point value 1: Byte 2
