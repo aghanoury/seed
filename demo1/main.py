@@ -1,8 +1,11 @@
 import numpy as np
 from src import Comms
-# from src import Finder
+from src import Finder
+import time
 
 """ Main Runner Script for Demo 1 """
+# cv parameters
+f = Finder()
 
 
 # robot parameters
@@ -17,6 +20,13 @@ com = Comms("CREAMSOUP\nSUPERBOT AI")
 
 # exit(0)
 
+f.start()
+while True:
+    result = f.markers
+    print(f.markers)
+    time.sleep(0.5)
+
+exit(0)
 
 
 commands = {1: com.CHANGE_ANGLE, 2: com.CHANGE_POS}

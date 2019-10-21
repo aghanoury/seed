@@ -1,5 +1,5 @@
 import numpy.core.multiarray
-#from picamera import PiCamera
+from picamera import PiCamera
 from time import sleep
 from cv2 import aruco
 import cv2
@@ -35,8 +35,12 @@ class Finder:
         self.marker_detection = {}
         
         # Camera calibration for 800x600 images
-        self.camera_matrix = np.load('mat800x600.npy')
-        self.dist_coeffs = np.load('dist800x600.npy')
+        # self.camera_matrix = np.load('mat800x600.npy')
+        # self.dist_coeffs = np.load('dist800x600.npy')
+
+        # absolute paths
+        self.camera_matrix = np.load('src/Finder/mat800x600.npy')
+        self.dist_coeffs = np.load('src/Finder/dist800x600.npy')
         
         self.markers = {}
         self.run_thread = True
@@ -67,7 +71,8 @@ class Finder:
         img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
         
         # Image is converted to grayscale first
-        gray = cv2.cvtColor(half, cv2.COLOR_BGR2GRAY)
+        # gray = cv2.cvtColor(half, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         # Thresholding is used to convert to a binary image
         # Otsu's method maximizes contrast based on the input image
