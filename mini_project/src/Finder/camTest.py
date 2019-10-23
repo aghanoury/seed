@@ -14,7 +14,7 @@ camera = PiCamera()
 #camera.resolution = (2592, 1944)
 camera.resolution = (1920, 1080)
 camera.exposure_mode = 'off'
-camera.shutter_speed = 10000
+camera.shutter_speed = 20000
 camera.awb_mode = 'off'
 
 checkpoint = time.time()
