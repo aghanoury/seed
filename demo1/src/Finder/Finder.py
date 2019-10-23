@@ -95,4 +95,5 @@ class Finder:
                 angle_v = math.atan(y/z)
                 
                 # Updates marker entries in dictionary
-                self.markers[marker_id] = (distance, angle_h, angle_v, time.time())
+                # self.markers[marker_id] = (distance, angle_h, angle_v, time.time())
+                self.markers[marker_id] = (z, angle_h, angle_v, time.time())
