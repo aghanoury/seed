@@ -1,6 +1,8 @@
 from Finder import Finder
 
 f = Finder()
+f.test_markers()
+'''
 f.start()
 
 while(True):
@@ -13,3 +15,4 @@ while(True):
         print(key, res[key])
 
 f.stop()
+'''

@@ -12,11 +12,9 @@ import time
 # Aruco dictionary used
 aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
 
-# Constants for polynomial fit
-# Distances are not totally linear, this makes it more accurate
-a = 2.01903E-06
-b = 0.062811295
-c = 3.107552773
+# Constants for linear regression
+m = 0.08361
+b = -3.9491
 
 # Markers are 3 in, or 76.2 mm
 marker_width = 76.2
@@ -92,7 +90,7 @@ class Finder:
                 
                 # Select built-in 
                 x, y, z = tvecs[i][0]
-                distance = a * z**2 + b * z + c;
+                distance = m*z + b;
                 angle_h = math.atan(x/z)
                 angle_v = math.atan(y/z)
                 
