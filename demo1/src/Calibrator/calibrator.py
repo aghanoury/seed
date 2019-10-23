@@ -11,8 +11,12 @@ folder = 'calib'
 width = 800
 height = 600
 
-board = aruco.CharucoBoard_create(7, 5, 1, 0.8, aruco_dict)
-imboard = board.draw((2000, 2000))
+board_x = 9
+board_y = 7
+board = aruco.CharucoBoard_create(board_x, board_y, 1, 0.8, aruco_dict)
+
+px_in = 300
+imboard = board.draw((board_x*px_in, board_y*px_in))
 
 reset = input("Reset files? Type 'yes' to reset. ")
 
@@ -30,11 +34,11 @@ if reset == 'yes':
     camera = PiCamera()
     camera.resolution = (width, height)
 
-    camera.start_preview()
-    for i in range(50):
+    # camera.start_preview()
+    for i in range(20):
         input("Capture #{}".format(i+1))
         camera.capture(join(folder, '{}.png'.format(time.time())))
-    camera.stop_preview()
+    # camera.stop_preview()
 
 def read_chessboards(images):
     """
