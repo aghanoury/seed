@@ -21,19 +21,14 @@ com = Comms("CREAMSOUP\nSUPERBOT AI")
 # exit(0)
 
 f.start()
-while True:
-    result = f.markers
-    print(f.markers)
-    time.sleep(0.5)
-
-exit(0)
 
 
-commands = {1: com.CHANGE_ANGLE, 2: com.CHANGE_POS}
+
+commands = {1: com.CHANGE_ANGLE, 2: com.CHANGE_POS, 3: 4}
 
 while True:
     payload = []
-    print("----\nCommands\n1: Change angle\n2: Change position")
+    print("----\nCommands\n1: Change angle\n2: Change position\n3: Detect Marker")
     try:
         command = commands[int(input("Enter a command: "))] 
     except KeyboardInterrupt:
@@ -67,3 +62,7 @@ while True:
         payload.append(theta)
 
         com.sendData(payload)
+
+    elif command == 4:
+        result = f.markers
+        print(result)
