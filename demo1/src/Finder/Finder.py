@@ -13,8 +13,8 @@ import time
 aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
 
 # Constants for linear regression
-m = 0.08361
-b = -3.9491
+m = 0.0892
+b = 0.4012
 
 # Markers are 3 in, or 76.2 mm
 marker_width = 76.2
@@ -94,6 +94,9 @@ class Finder:
                 angle_h = math.atan(x/z)
                 angle_v = math.atan(y/z)
                 
+                # Angle Correction
+                angle_h = angle_h*1.1136 - 0.0109
+
                 # Updates marker entries in dictionary
-                # self.markers[marker_id] = (distance, angle_h, angle_v, time.time())
-                self.markers[marker_id] = (z, angle_h, angle_v, time.time())
+                self.markers[marker_id] = (distance, angle_h, angle_v, time.time())
+                # self.markers[marker_id] = (z, angle_h, angle_v, time.time())
