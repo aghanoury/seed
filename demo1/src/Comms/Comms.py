@@ -76,6 +76,9 @@ class Comms(object):
             print("Error setting screen color")
         
 
+    # def write_to_lcd(self, message):
+
+
     # extraneous function, future version may deprecate
     def input_handler(self, command):
 

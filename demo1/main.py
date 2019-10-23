@@ -10,7 +10,7 @@ f = Finder()
 
 # robot parameters
 r = 0.15/2
-d = 0.275
+d = 0.274
 
 com = Comms("CREAMSOUP\nSUPERBOT AI")
 # com.startup_color_sequence()
@@ -65,4 +65,10 @@ while True:
 
     elif command == 4:
         result = f.markers
+        com.lcd.clear()
+        try:
+            st = "Dist: {}\nAng: {}".format(str(round(result[0][0])),str(round(-1*result[0][1]*180/np.pi)))
+        except:
+            st = "None"
+        com.lcd.message = st
         print(result)
