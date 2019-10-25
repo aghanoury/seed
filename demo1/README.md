@@ -6,12 +6,4 @@ The official repository of all Demo 1 source code
 - [Computer Vision](src/Finder)
 
 
-In its current state, the controls do not work
-## Computer Vision
-Add content here
-## Localization
-Add content here
-## Controls
-Add content here
-## Processor Communications
-Add content here
+The purpose of Demo 1 is to demonstrate the bare functionality of our control system and computer vision detection schemes. Use the quick links above to find out more information
