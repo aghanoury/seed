@@ -4,7 +4,8 @@ from src import Finder
 import time
 
 """ Main Runner Script for Demo 1 """
-# cv parameters
+
+# init CV object
 f = Finder()
 
 
@@ -12,24 +13,30 @@ f = Finder()
 r = 0.15/2
 d = 0.270
 
-com = Comms("CREAMSOUP\nSUPERBOT AI")
+# init comms obj
+try:
+    com = Comms("CREAMSOUP\nSUPERBOT AI")
+except:
+    print("Failed to init Comms class")
+    print("Is the arduino on and i2c connected?\nExiting")
+    exit(14)
 # com.startup_color_sequence()
 
-# Send some data
-# com.sendData(payload)
+# start CV processing thread
+f.start() # starts its own thread
 
-# exit(0)
+PRINT_CV = 4
 
-f.start()
+# small dictionary of commands
+commands = {1: com.CHANGE_ANGLE, 2: com.CHANGE_POS, 3: PRINT_CV}
 
 
-
-commands = {1: com.CHANGE_ANGLE, 2: com.CHANGE_POS, 3: 4}
-
+# continously prompt for user commands
 while True:
     payload = []
     print("----\nCommands\n1: Change angle\n2: Change position\n3: Detect Marker")
     try:
+        # get user input
         command = commands[int(input("Enter a command: "))] 
     except KeyboardInterrupt:
         print("Keyboard Interrupt --> Exiting")
@@ -38,6 +45,7 @@ while True:
         print("Invalid Option. Try again.")
         continue
 
+    # process user input
     if command == com.CHANGE_ANGLE:
         payload = [com.CHANGE_ANGLE]
 
@@ -63,7 +71,7 @@ while True:
 
         com.sendData(payload)
 
-    elif command == 4:
+    elif command == PRINT_CV:
 
         while True:
             result = f.markers
