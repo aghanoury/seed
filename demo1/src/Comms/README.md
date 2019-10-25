@@ -1,7 +1,7 @@
 # Comms Class
-**NOTE**: In its current state, reading information from the Arduino does is not fully implemented and will cause a crash
+**NOTE**: In its current state, reading information from the Arduino does is not fully implemented and may cause a crash
 
-This class deals with the transmission and receiving of data
+This class deals with the data exchange between the Arduino and Raspberry PI. It allows us to create flexible comm solutions for each assignment/demo. For example, in Demo 1, we used this same class developed for the mini-project without changing anything other than the data we wanted to send. In demo 1, if we wanted the robot to change by some angle, we performed the math on the PI side to convert that target angle to two separate angles that the individual wheels needed to rotate to complete that turn. 
 
 ## Packets
 This class was designed to send only floats. The packet structure is as follows
