@@ -1,0 +1,447 @@
+//////---------------------------------------------------------------------------------------------------------------------------//////
+//Author: Ian Welch, Dan McElroy, Pooya Aghanoury, Jason Matney
+//Course: SEED Lab
+//Problem Description: Execute command and control from raspberry pi. 
+
+#include <Encoder.h>
+#include <Wire.h>
+
+
+// 
+
+// TODO: implement target changing protocol
+#define WRITE_ANGLE 0x09
+#define READ_ANGLE 0x0A
+
+// DIRECTION PINS
+#define left_dir_pin    8
+#define right_dir_pin   7
+
+// with this, we can assign directions to the motors
+// EX: left_motor_direction = backward; // assigns backward (int 0) 
+// EX: cout << left_motor_direction << endl; // would print '0'
+//enum WheelDirection {forward = 1, backward = 0};
+//WheelDirection left_motor_direction = forward;
+//WheelDirection right_motor_direction = forward;
+
+
+
+
+// COMMS
+byte operation = 0;
+byte* packets = new byte[32]; // allocate a buffer for i2c packets
+byte instruction = 0;
+byte num_of_floats = 0;
+
+
+
+
+// USEFUL CONSTANTS (USEFUL FACTS)
+const float r = .15/2;
+const float d = 0.275;
+const float pi = 3.14159;
+
+const int ticks_per_rot = 1600; // num of ticks in a full 360 rotation 
+const float tick_rad = pi/800; // rads corresponding to a single tick
+const float tick_deg = 0.225; // degrees corresponding to a single tick
+
+// TIME
+float timeNow = 0; // captures millis() at beginning of each loop
+float lastTime = 0; // store previous "timeNow" value
+
+// POSITION
+long new_left_encoder = 0;
+long old_left_encoder  = 0;
+
+long new_right_encoder = 0;
+long old_right_encoder  = 0;
+
+
+float xNew = 0;
+float yNew = 0;
+float xOld = 0;
+float yOld = 0;
+
+float phiNew = 0;
+float phiOld = 0;
+float deltaThetaR = 0;
+float deltaThetaL = 0;
+float phiOld2;
+float phi_movement = 0;
+bool direct;
+float theta_wheel_rot = 0;
+
+// CONTROLS
+float angVel; // angular velocity of...? might need
+float cumError_R = 0;// speaks for itself
+float cumError_L = 0;// speaks for itself
+float elapsedTime = 0; 
+float lastError_R = 0;
+float lastError_L = 0;
+float rateError_R = 0;
+float rateError_L = 0;
+
+float Kp_R = 5;
+float Ki_R = 10;
+float Kd_R = 7;
+
+float Kp_L = 5;
+float Ki_L = 10;
+float Kd_L = 7;
+
+float error_R = 0;
+float error_L = 0;
+
+float accl_roof_R = 5;
+float accl_roof_L = 5;
+
+float cumError_Limit = 7;
+float huntSpeedParameter = 1;
+float angleWindow = pi/90;
+int accelDampen = 250;
+int prop_cap = 75;
+
+int left_act_signal = 0; // what is this used for?
+int right_act_signal = 0; // what is this used for?
+int left_act_signal_old = 0; // what is this used for?
+int right_act_signal_old = 0; // what is this used for?
+
+// direction values
+byte left_motor_direction = 1;
+byte right_motor_direction = 0;
+
+enum State {neutral = 0, moving = 1};
+State state = neutral;
+
+
+// MOTOR ENCODERS. Pins 2 and 3 are interrupt pins.//
+Encoder knobLeft(3, 4);
+Encoder knobRight(2, 5);
+
+
+
+//float targetAngle = -4*pi;
+float left_wheel_theta = 0;
+float right_wheel_theta = 0;
+float target_left_angle = 0;
+float target_right_angle = 0;
+bool left_exited_hunt = false;
+bool right_exited_hunt = false;
+
+
+float target_wheel_theta = 0;
+
+// FUNCTION DECLARATIONS
+float pid(float, float, float); // PID
+void requestEvent();
+void receiveEvent();
+
+
+void setup() {
+  Serial.begin(250000);
+  
+  pinMode(4, OUTPUT);
+  digitalWrite(4, HIGH);
+  pinMode(7, OUTPUT);
+  pinMode(8, OUTPUT);
+  pinMode(9, OUTPUT);
+  pinMode(10, OUTPUT);
+  pinMode(12, INPUT);
+
+
+  Wire.begin(8);                // join i2c bus with address #8
+  Wire.onReceive(receiveEvent); // register event
+//  Wire.onRequest(requestEvent); // might need this later
+
+//  lcd.init();
+//  lcd.backlight();
+//  lcd.setCursor(0,0);
+//  lcd.print("Trash");
+
+}
+//
+//
+////////////////////////// Function for the motor controller //////////////////////////
+// 
+//
+//TODO: convert this controller to work with milliseconds
+float pid(float current_angle_L, float target_angle_L, float current_angle_R, float target_angle_R, float currentTime)
+{
+//  Serial.print("Current Position = ");
+//  Serial.print(positionCur);
+//  Serial.print(", Current Time = ");
+//  Serial.print(currentTime);
+//  Serial.print(", Set Point = ");
+//  Serial.print(setPoint);
+//  Serial.println();
+    //Set times
+    elapsedTime = currentTime - lastTime;
+    lastTime = currentTime;
+
+  // LEFT WHEEL******************************************************
+      // error calculation
+      error_L = target_angle_L - current_angle_L;
+      cumError_L = cumError_L + error_L * elapsedTime;
+      rateError_L = (error_L - lastError_L)/elapsedTime;
+
+      // Integrator Anti Windup
+      if(cumError_L > cumError_Limit)
+      {
+        cumError_L = cumError_Limit;
+      }
+
+      else if(cumError_L < -cumError_Limit)
+      {
+        cumError_L = -cumError_Limit;
+      }
+      
+      float val;
+      val = (Kp_L*error_L);
+      if (abs(val) > prop_cap){
+        val = -1 + (val/abs(val) * prop_cap);
+      }
+    
+      left_act_signal = (val) + (Ki_L * cumError_L) + (Kd_L * rateError_L);
+      lastError_L = error_L;
+      
+     
+      //Accleration Control
+//      if((left_act_signal - left_act_signal_old) > accl_roof_L)
+//      {
+//        left_act_signal = left_act_signal_old + accl_roof_L;
+//        left_act_signal_old = left_act_signal;   
+//      }
+
+      //Saturation
+      if (left_act_signal > 255)
+      {
+        left_act_signal = 255;
+       
+      }
+      else if (left_act_signal < -255) {
+        left_act_signal = -255;
+        
+      }
+      left_act_signal_old = left_act_signal;
+     
+      //Hunting Control
+      if ((abs(error_L) < angleWindow) && ((abs(deltaThetaL/elapsedTime)) <  huntSpeedParameter)) // 0.03490=pi/90
+      {
+        left_exited_hunt = true;
+        left_act_signal = 0;
+        error_L = 0;
+        cumError_L = 0;
+        rateError_L = 0;
+
+        //Serial.println("Hunting Control Left");
+      }
+
+  // Right WHEEL******************************************************
+      // error calculation
+      error_R = target_angle_R - current_angle_R;
+      cumError_R = cumError_R + error_R * elapsedTime;
+      rateError_R = (error_R - lastError_R)/elapsedTime;
+      
+      //Integrator Anti Windup
+      if(cumError_R > cumError_Limit)
+      {
+        cumError_R = cumError_Limit;
+      }
+
+      else if (cumError_R < -cumError_Limit) {
+        cumError_R = -cumError_Limit;
+      }
+
+      val = (Kp_R*error_R);
+      if (abs(val) > prop_cap){
+        val = val/abs(val) * prop_cap;
+      }
+      right_act_signal = val + (Ki_R * cumError_R) + (Kd_R * rateError_R);
+      lastError_R = error_R;
+
+     
+      //Accleration Control
+//      if((right_act_signal - right_act_signal_old) > accl_roof_R)
+//      {
+//       right_act_signal = right_act_signal_old + accl_roof_R;
+//       right_act_signal_old = right_act_signal;
+//  
+//      }
+      //Saturation
+      if (right_act_signal > 255)
+      {
+        right_act_signal = 255;
+      }
+      else if (right_act_signal < -255) {
+        right_act_signal = -255;
+      }
+      right_act_signal_old = right_act_signal;
+      //Hunting Control
+      //Serial.print("Error Right: ");
+      //Serial.println((abs(deltaThetaR/elapsedTime)));
+      if ((abs(error_R) < angleWindow) && ((abs(deltaThetaR/elapsedTime)) <  huntSpeedParameter)) // 0.03490=pi/90
+      {
+        right_exited_hunt = true;
+        right_act_signal = 0;
+        error_R = 0;
+        cumError_R = 0;
+        rateError_R = 0;
+        //Serial.println("Hunting Control Right");
+      }
+      if (right_exited_hunt && left_exited_hunt) {
+        state = neutral;
+        Serial.println("Entered neutral");
+      }
+//    Serial.print("Actuating Signal = ");
+//    Serial.println(left_act_signal);
+
+      
+}
+
+float object_angle(float posX, float posY, float obj_posX, float obj_posY, float phi_frame)
+{
+  phi_movement = atan2((obj_posY - posY), (obj_posX - posX)) - phi_frame; 
+  return phi_movement;
+}
+
+
+//////////////////////////////// MAIN //////////////////////////////////////////////////////////////
+
+
+
+void loop() {
+
+  left_wheel_theta = new_left_encoder * tick_rad;
+  right_wheel_theta = new_right_encoder * tick_rad;
+
+  if (state == neutral) {
+    
+    knobLeft.write(0);
+    knobRight.write(0);
+    target_left_angle = 0;
+    target_right_angle = 0;
+
+    left_wheel_theta = 0;
+    right_wheel_theta = 0;
+    
+  }
+
+  
+    timeNow = micros(); // grab current time
+    
+    old_left_encoder = new_left_encoder;
+    old_right_encoder = new_right_encoder;
+    
+    new_left_encoder = knobLeft.read();
+    new_right_encoder = knobRight.read();
+  
+
+
+
+  
+  
+
+
+    deltaThetaR = -(new_right_encoder - old_right_encoder) * tick_rad;
+    deltaThetaL = (new_left_encoder - old_left_encoder) * tick_rad;
+//       Serial.print("left: ");
+//      Serial.println(deltaThetaL*1000);
+//      Serial.print("right: ");
+//      Serial.println(deltaThetaR*1000);
+
+//    xNew = xOld + cos(phiOld)*(r/2)*(deltaThetaR + deltaThetaL);
+//    yNew = yOld + sin(phiOld) * (r/2)*(deltaThetaR + deltaThetaL);
+//    phiNew = phiOld + (r/d)*(deltaThetaR - deltaThetaL);
+//
+//    xOld = xNew;
+//    yOld = yNew;
+  //}
+//  phiOld2 = phiOld;
+//  phiOld = phiNew;
+
+  pid(left_wheel_theta, target_left_angle, right_wheel_theta, target_right_angle, timeNow/1000000);
+
+
+  // ADD RIGHT 
+  if(right_act_signal < 0){
+    right_motor_direction = HIGH;
+  }
+  if(right_act_signal > 0){
+    right_motor_direction = LOW;
+  }
+
+  // ADD LEFT
+  if(left_act_signal < 0){
+    left_motor_direction = HIGH;
+  }
+  if(left_act_signal > 0){
+    left_motor_direction = LOW;
+  }
+
+  
+  
+  //// digitalWrite sets pin 7 HIGH or LOW for rotation direction and analogWrite sets pin 9 for PWM duty cycle value ///////
+  digitalWrite(right_dir_pin, right_motor_direction);  // right wheel
+  digitalWrite(left_dir_pin, left_motor_direction);  // left wheel
+  analogWrite(9, abs(right_act_signal)); //right whell
+  analogWrite(10, abs(left_act_signal));  //left wheel
+
+  
+  Serial.println(left_act_signal);
+
+}
+
+
+
+
+
+
+
+
+
+
+// ----- COMMS -------
+// WARNING: THIS FUNCTION WILL BREAK. 
+// (FROM RPI) DO NOT REQUEST INFORMATION FROM ARUINO AT THIS CURRENT STATE
+void requestEvent(){
+//  Serial.println("Enter Request");
+  if (operation == READ_ANGLE) {
+
+    long *target_pos_int = (long*) &phiOld;
+    uint8_t *float_bytes = new uint8_t[4];
+    
+    for (uint8_t i = 0; i < 4; i++){
+      float_bytes[i] = uint8_t(*target_pos_int >> (i << 3));
+    }
+    Wire.write(float_bytes, 4);
+
+    delete target_pos_int;
+    delete float_bytes;
+    
+  }
+//  Serial.println("Exit Request");
+}
+
+// handle incomding i2c packets
+// rewrite this using the 
+void receiveEvent() {
+
+  // copy bytes into packets
+  for (byte i = 0; Wire.available(); i++) {
+    packets[i] = Wire.read();
+//    Serial.println(packets[i]);
+  }
+  
+  instruction = packets[0];
+  num_of_floats = packets[1];
+
+  target_left_angle = *(float*) &packets[2];
+  target_right_angle = *(float*) &packets[6];
+Serial.println(target_left_angle);
+Serial.println(target_right_angle);
+  state = moving;
+  left_exited_hunt = false;
+  right_exited_hunt = false;
+  
+  
+}
