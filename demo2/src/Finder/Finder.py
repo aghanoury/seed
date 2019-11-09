@@ -81,7 +81,7 @@ class Finder:
         # Alternative: Histogram equalization can be used
         # thresh = cv2.equalizeHist(gray)
 
-        # Use built-in detection method
+        # Use built-in detection method, with 3 in. markers
         detection = aruco.detectMarkers(thresh, aruco_dict)
         rvecs, tvecs, wvecs = aruco.estimatePoseSingleMarkers(detection[0], 76.2, self.camera_matrix, self.dist_coeffs)
 
@@ -92,9 +92,20 @@ class Finder:
             for i in range(len(detection[1])):
                 marker_id = detection[1][i][0]
                 
-                # Select built-in 
-                x, y, z = tvecs[i][0]
-                distance = m*z + b;
+                # Correct position
+                pos = np.matrix.transpose(np.matrix(m*tvecs[i][0] + b))
+                
+                # Get rotation matrix of marker
+                rotation_matrix = cv2.Rodrigues(rvecs[i])[0]
+                
+                # Scaled for 2.5 in.
+                normal = np.matrix([[0], [0], [63.5]])        
+                result = pos - rotation_matrix * normal
+                
+                x = result[0][0]
+                y = result[1][0]
+                z = result[2][0]
+                
                 angle_h = math.atan(x/z)
                 angle_v = math.atan(y/z)
                 
@@ -102,7 +113,7 @@ class Finder:
                 angle_h = angle_h*1.1136 - 0.0109
 
                 # Updates marker entries in dictionary
-                self.markers[marker_id] = (distance, angle_h, angle_v, time.time())
+                self.markers[marker_id] = (z, angle_h, angle_v, time.time())
                 # self.markers[marker_id] = (z, angle_h, angle_v, time.time())
         else:
             self.did_detect = False

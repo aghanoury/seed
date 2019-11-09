@@ -2,6 +2,7 @@ from cv2 import aruco
 import cv2
 import numpy as np
 import math
+from math import cos, sin
 
 aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
 
@@ -9,8 +10,8 @@ camera_matrix = np.load('mat800x600.npy')
 dist_coeffs = np.load('dist800x600.npy')
 
 # Constants for linear regression
-m = 0.08361
-b = -3.9491
+m = 0.0892
+b = 0.4012
 
 # Image is captured to bit stream and decoded
 initial = cv2.imread("../../../test_pics/300cm.jpg")
@@ -36,9 +37,20 @@ if detection[1] is not None:
     for i in range(len(detection[1])):
         marker_id = detection[1][i][0]
         
-        # Select built-in 
-        x, y, z = tvecs[i][0]
-        distance = m*z + b;
+        # Correct position
+        pos = np.matrix.transpose(np.matrix(m*tvecs[i][0] + b))
+        
+        # Get rotation matrix of marker
+        rotation_matrix = cv2.Rodrigues(rvecs[i])[0]
+        
+        # Scaled for 2.5 in.
+        normal = np.matrix([[0], [0], [63.5]])        
+        result = pos - rotation_matrix * normal
+        
+        x = result[0][0]
+        y = result[1][0]
+        z = result[2][0]
+        
         angle_h = math.atan(x/z)
         angle_v = math.atan(y/z)
         
@@ -46,7 +58,6 @@ if detection[1] is not None:
         print(x)
         print(y)
         print(z)
-        print(distance)
         print(angle_h)
         print(angle_v)
         
