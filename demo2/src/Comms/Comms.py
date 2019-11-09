@@ -1,10 +1,12 @@
 # this class handles the communication between RPi and Arduino
 import board
 import busio
+import numpy as np
 from smbus2 import SMBus
 import adafruit_character_lcd.character_lcd_rgb_i2c as character_lcd
 import time
 import struct
+import threading
 from subprocess import Popen, PIPE
 
 class Comms(object):
@@ -12,17 +14,33 @@ class Comms(object):
     lcd = None # lcd object
     bus = None # bus obj
     address = 0
+    state = 0
 
+    # bot attributes
+    r = 0.149/2 # radius of wheel
+    d = 0.270 # distance between wheels (measured from center)
+    
     # these constants serve as a the fist data byte in each
     # i2c tranmission packet 
     
     """ protocol """
-    CHANGE_POS = 0x03
-    CHANGE_ANGLE = 0x09
-    READ_ANGLE = 0x0A
+    STOP = 0x01
+    SEARCH = 0x02
+    LINEAR_TRAVERSE = 0x03
+    CIRCULAR_TRAVERSE = 0x04
+    ROTATE = 0x05
+    REQUEST = 0x06
+
+    """ commands """
+    commands = dict()
+    commands['angle change'] = ROTATE
+    commands['linear traverse'] = LINEAR_TRAVERSE
+    commands['circular traverse'] = CIRCULAR_TRAVERSE
+    commands['search'] = SEARCH
+    commands['stop'] = STOP
 
 
-    def __init__(self, init_string=None):
+    def __init__(self, init_string=None, r=None, d=None):
         
         # init lcd display
         default_message = "Creamsoup\nSuperbot AI"
@@ -46,15 +64,22 @@ class Comms(object):
         self.bus = SMBus(1)
         self.address = 0x08
 
+        self.r = r or self.r
+        self.d = d or self.d
 
+        self.thread = threading.Thread(target=self.state_thread)
 
+        print("""Initialized Comms with the following Robot Parameters
+Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
+
+    # set up functions
     def startup_color_sequence(self):
         self.set_screen_color("100 0 0")
-        time.sleep(0.5)
+        time.sleep(0.25)
         self.set_screen_color("0 100 0")
-        time.sleep(0.5)
+        time.sleep(0.25)
         self.set_screen_color("0 0 100")
-        time.sleep(0.5)
+        time.sleep(0.25)
         self.set_screen_color("100 100 100")
 
     def set_screen_color(self, rgb):
@@ -76,9 +101,12 @@ class Comms(object):
             print("Error setting screen color")
         
 
-    # def write_to_lcd(self, message):
+    # def write_to_lcd(self, message): FIXME
 
-
+    def state_detect_thread_start(self, interval=0.25):
+        self.thread.start(interval)
+    def state_thread(self, interval):
+        
     # extraneous function, future version may deprecate
     def input_handler(self, command):
 
@@ -99,7 +127,7 @@ class Comms(object):
             self.lcd.clear()
 
     
-
+    # currently broken, don't use
     def getData(self, val):
         if val == self.READ_ANGLE:
             response = self.bus.read_i2c_block_data(self.address, val, 4)
@@ -108,7 +136,62 @@ class Comms(object):
             print(val)
             return val
 
+    # hot commands
+    def search(self):
+        angle1 = 2*np.pi
+        theta = angle1 * self.d / self.r
+        self.sendData([self.SEARCH, float(theta), float(theta)])
+        print('SENT SIG SEARCH')
 
+    def stop(self):
+        self.sendData([self.LINEAR_TRAVERSE, 0.0, 0.0])
+        print("SENT SIG STOP")
+
+    def rotate(self, angle, radians=False):
+        # angle should come in as degrees
+        if radians == False:
+            angle *= np.pi/180
+        theta = angle * self.d / self.r
+        self.sendData([self.ROTATE, theta, theta])
+        print("ROTATING WHEELS {} RADS".format(theta))
+
+
+    def linTraverse(self, distance, meters=False):
+        if meters == False:
+            distance = distance/3.281
+        theta = distance / self.r * 2.0
+        payload = [self.LINEAR_TRAVERSE, float(-theta), float(theta)]
+        self.sendData(payload)
+        print("TRAVERSING {} ft.".format(distance))
+
+    def circularTraverse(self, radius, direction="left",portion=1):
+        # direction will usually be left if traversing
+        # course counter clockwise
+        # portion is the amount of circle we want to travel
+        # portion=0.5 would travel a perfect half-circle
+
+        
+        payload = [self.CIRCULAR_TRAVERSE]
+        shorter = 2*np.pi*(radius-self.d/2)*2
+        longer  = 2*np.pi*(radius+self.d/2)*2
+
+        if direction == "left":
+            theta_l = shorter/self.r
+            theta_r = longer/self.r
+        elif direction == "right":
+            theta_r = shorter/self.r
+            theta_l = longer/self.r
+        else:
+            print("IMPROPER DIRECTION DEFINED")
+            print('should be either "left" or "right"')
+
+        print("l: {} r: {} radius: {}".format(theta_l, theta_r, radius))
+        payload.append(float(theta_l))
+        payload.append(float(theta_r))
+        payload.append(float(radius))
+        self.sendData(payload)
+
+        
     # the most important
     def sendData(self, data):
         
@@ -215,45 +298,3 @@ if __name__ == "__main__":
         obj.input_handler(command)
     
 
-
-
-    # obj.input_handler(command)
-
-    # # for RPI version 1, use “bus = smbus.SMBus(0)”
-    # # init i2c bus
-    # bus = SMBus(1)
-    # address = 0x08 #arduino address
-
-    # # this function handles user data meant for sending
-    # # we are using the i2c starting index value as a psuedo header
-    # # so the arduino can know what kind of value is being sent
-
-    # def sendToDuino(data):
-        
-    #     # if the data is an integer, send a single byte
-        
-
-    #     # if the incoming data is a string
-    #     
-
-
-    # while True:
-    #    
-
-    #     # check for command inputs
-    #     
-    #     elif var == 'exit':
-    #         exit()
-
-    #     # else: processes generic input
-    #     else:
-    #         #attempt conversion to int, otherwise send out string
-    #         try:
-    #             data = int(var)
-    #         except:
-    #             data = var
-
-    #         # send data out
-    #         sendToDuino(data)
-        
-        

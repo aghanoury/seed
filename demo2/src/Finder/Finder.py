@@ -31,6 +31,8 @@ class Finder:
         self.camera.shutter_speed = 10000
         self.camera.awb_mode = 'off'
         self.marker_detection = {}
+
+        self.did_detect = False
         
         # Camera calibration for 800x600 images
         # self.camera_matrix = np.load('mat800x600.npy')
@@ -83,8 +85,10 @@ class Finder:
         detection = aruco.detectMarkers(thresh, aruco_dict)
         rvecs, tvecs, wvecs = aruco.estimatePoseSingleMarkers(detection[0], 76.2, self.camera_matrix, self.dist_coeffs)
 
+        # print("frame")
         # Run if markers are detected
         if detection[1] is not None:
+            self.did_detect = True
             for i in range(len(detection[1])):
                 marker_id = detection[1][i][0]
                 
@@ -100,3 +104,5 @@ class Finder:
                 # Updates marker entries in dictionary
                 self.markers[marker_id] = (distance, angle_h, angle_v, time.time())
                 # self.markers[marker_id] = (z, angle_h, angle_v, time.time())
+        else:
+            self.did_detect = False

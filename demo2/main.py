@@ -5,13 +5,15 @@ import time
 
 """ Main Runner Script for Demo 1 """
 
-# init CV object
-f = Finder()
+# change to true to run cv
+if True:
+    f = Finder() # init CV object
+    f.start() # starts its own thread
 
 
 # robot parameters
-r = 0.15/2
-d = 0.270
+r = 78
+d = 69
 
 # init comms obj
 try:
@@ -22,22 +24,33 @@ except:
     exit(14)
 # com.startup_color_sequence()
 
-# start CV processing thread
-f.start() # starts its own thread
-
-PRINT_CV = 4
+PRINT_CV = 69
+FIND_N_GO = 70
 
 # small dictionary of commands
-commands = {1: com.CHANGE_ANGLE, 2: com.CHANGE_POS, 3: PRINT_CV}
+# add more commands to the comms class
+cmds = com.commands
+
+# added tmp commands
+cmds['debug CV'] = PRINT_CV
+cmds['FIND_N_GO'] = FIND_N_GO
+
+# commands = {"angle change": com.CHANGE_ANGLE, "linear traverse": com.}
+# commands = {1: com.ROTATE, 2: com.LINEAR_TRAVERSE, 3: PRINT_CV, 4: FIND_N_GO}
 
 
 # continously prompt for user commands
 while True:
-    payload = []
-    print("----\nCommands\n1: Change angle\n2: Change position\n3: Detect Marker")
+
+    # print menu options
+    for i in range(len(cmds)):
+        print("{}: {}".format(i+1,list(cmds)[i]))
+
+
+    # get user input
     try:
-        # get user input
-        command = commands[int(input("Enter a command: "))] 
+        key = list(cmds)[int(input("Command: "))-1]
+        command = cmds[key]
     except KeyboardInterrupt:
         print("Keyboard Interrupt --> Exiting")
         exit(0)
@@ -46,40 +59,117 @@ while True:
         continue
 
     # process user input
-    if command == com.CHANGE_ANGLE:
-        payload = [com.CHANGE_ANGLE]
+    if command == com.ROTATE:
+        try:
+            target = float(input("Target Angle (deg): "))
+        except:
+            print("Invalid Value")
+        com.rotate(target)
+  
 
-        angle1 = float(input("Targeted Angle Left (Deg): "))
-        # angle2 = float(input("Targeted Angle Right (Deg): "))
-        angle1 *= np.pi/180 
-        # angle2 *= np.pi/180 * 2
+    elif command == com.LINEAR_TRAVERSE:
+        try:
+            target = float(input("Target Distance (ft): "))
+        except:
+            print("Invalid Value")
+        com.linTraverse(target)
 
-        theta = angle1 * d / r
-        payload.append(theta)
-        payload.append(theta)
+    elif command == com.STOP:
+        com.stop()
 
-        com.sendData(payload)
+    elif command == com.SEARCH:
+        com.search()
 
-    elif command == com.CHANGE_POS:
-        payload = [com.CHANGE_POS]
+    elif command == com.CIRCULAR_TRAVERSE:
+        try:
+            target_radius = float(input("Target Radius (ft) "))
+            target_radius /= 3.281
 
-        dist = float(input("Targeted Distance (ft): "))
-        dist = dist/3.281
-        theta = dist / r * 2
-        payload.append(-theta)
-        payload.append(theta)
+            direction = input("l or r? (default is l, ccl): ")
+            
+        except:
+            print("Invalid Value")
+        
+        if direction == '' or 'l':
+            com.circularTraverse(target_radius)
+        elif direction == 'r':
+            com.circularTraverse(target_radius, direction='right')
+        else:
+            print("invalid direction")
 
-        com.sendData(payload)
+
+
+
 
     elif command == PRINT_CV:
 
         while True:
-            result = f.markers
-            com.lcd.clear()
-            try:
-                st = "Dist: {}\nAng: {}".format(str(round(result[0][0]/30.48,3)),str(round(-1*result[0][1]*180/np.pi,3)))
-            except:
-                st = "None"
-            com.lcd.message = st
-            print(result)
-            time.sleep(1)
+            while (f.did_detect == True):
+                result = f.markers
+                distance = round(result[0][0]/100,3)
+                angle = round(result[0][1],3)
+                
+                print(distance, angle)
+                com.lcd.clear()
+                try:
+                    st = "Dist: {}\nAng: {}".format(str(round(result[0][0]/30.48,3)),str(round(-1*result[0][1]*180/np.pi,3)))
+                except:
+                    st = "None"
+                com.lcd.message = st
+                print(result)
+                time.sleep(0.1)
+
+    elif command == FIND_N_GO:
+
+        while True:
+            if(input("Auto Detect [y/n]: ") == 'y'):
+                did_detect = False
+                timeout = time.time() + 15   # 5 minutes from now
+                com.search()
+
+                try:
+                    while f.did_detect == False:
+                        if time.time() > timeout:
+                            print('Timeout')
+                            break
+                except KeyboardInterrupt:
+                    print("Keyboard interrupt. Returning to Home")
+                    com.stop()
+                    break
+                com.stop()
+
+                time.sleep(2)
+                result = f.markers
+                distance = round(result[0][0]/100,3)
+                angle = round(-result[0][1],3)
+                
+                try:
+                    print(distance, angle)
+                    com.rotate(angle, radians=True)
+                    time.sleep(2)
+                    com.linTraverse(distance-0.40,meters=True)
+                    time.sleep(9)
+                    distance = round(result[0][0]/100/3.281,3)
+                    print(distance)
+                    com.rotate(-90)
+                    time.sleep(4)
+                    com.stop()
+                    time.sleep(1)
+                    com.circularTraverse(1.4*0.3048, direction='left')
+                    time.sleep(7)
+                except KeyboardInterrupt:
+                    print("Keyboard interrupt. Returning to Home")
+                    com.stop()
+                    break
+
+
+
+                # print("Distance: {}    Angle: {} ".format(distance, angle))
+                # print(f.did_detect)
+                # time.sleep()
+            
+
+
+
+            else:
+                break
