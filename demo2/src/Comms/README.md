@@ -1,7 +1,11 @@
-# Comms Class
+# Comms Class 2.0
 **NOTE**: In its current state, reading information from the Arduino does is not fully implemented and may cause a crash
 
-This class deals with the data exchange between the Arduino and Raspberry PI. It allows us to create flexible comm solutions for each assignment/demo. For example, in Demo 1, we used this same class developed for the mini-project without changing anything other than the data we wanted to send. In demo 1, if we wanted the robot to change by some angle, we performed the math on the PI side to convert that target angle to two separate angles that the individual wheels needed to rotate to complete that turn. 
+
+The past assignments were key challenges that helped develop the foundation for communications. In demo 1, we developed the necessary lower-level protocols needed for basic command and control. It was also a great time for establishing the accruacy of our control algorithms. 
+
+Demo 2 brings about a new challenge which requires further abstracton of our protocols and procedures. Comms 2.0 features a heavily updated and cleaner API. This new interface handles low-level operations and simiplifies the process of sending commands.
+
 
 ## Packets
 This class was designed to send only floats. The packet structure is as follows

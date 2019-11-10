@@ -58,27 +58,25 @@ while True:
         print("Invalid Option. Try again.")
         continue
 
-    # process user input
+    """ Process User Input """
     if command == com.ROTATE:
-        try:
-            target = float(input("Target Angle (deg): "))
-        except:
-            print("Invalid Value")
+        try: target = float(input("Target Angle (deg): "))
+        except: print("Invalid Value")
         com.rotate(target)
   
 
     elif command == com.LINEAR_TRAVERSE:
-        try:
-            target = float(input("Target Distance (ft): "))
-        except:
-            print("Invalid Value")
+        try: target = float(input("Target Distance (ft): "))
+        except: print("Invalid Value")
         com.linTraverse(target)
-
+            
+            
     elif command == com.STOP:
         com.stop()
 
     elif command == com.SEARCH:
         com.search()
+
 
     elif command == com.CIRCULAR_TRAVERSE:
         try:
@@ -87,8 +85,7 @@ while True:
 
             direction = input("l or r? (default is l, ccl): ")
             
-        except:
-            print("Invalid Value")
+        except: print("Invalid Value")
         
         if direction == '' or 'l':
             com.circularTraverse(target_radius)
@@ -123,7 +120,6 @@ while True:
 
         while True:
             if(input("Auto Detect [y/n]: ") == 'y'):
-                did_detect = False
                 timeout = time.time() + 15   # 5 minutes from now
                 com.search()
 
