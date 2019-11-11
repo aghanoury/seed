@@ -47,9 +47,9 @@ if detection[1] is not None:
         normal = np.matrix([[0], [0], [63.5]])        
         result = pos - rotation_matrix * normal
         
-        x = result[0][0]
-        y = result[1][0]
-        z = result[2][0]
+        x = result.item(0)
+        y = result.item(1)
+        z = result.item(2)
         
         angle_h = math.atan(x/z)
         angle_v = math.atan(y/z)
