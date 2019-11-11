@@ -13,9 +13,10 @@ class Capturer:
         self.camera.shutter_speed = 10000
         self.camera.awb_mode = 'off'
         self.marker_detection = {}
+        self.folder = 'Captures'
 
         try:
-            os.mkdir('Captures')
+            os.mkdir(self.folder)
         except FileExistsError:
             pass
             
@@ -27,7 +28,7 @@ class Capturer:
             val = input("Capture Image? q to quit")
             if val == 'q':
                 break
-            camera.capture(os.path.join(folder, '{}.png'.format(self.count)))
+            camera.capture(os.path.join(self.folder, '{}.png'.format(self.count)))
             self.count += 1
 
 c = Capturer()
