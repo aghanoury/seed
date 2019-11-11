@@ -148,7 +148,7 @@ while True:
                     com.rotate(angle, radians=True)
                     time.sleep(2)
                     print(distance)
-                    com.linTraverse(distance-0.9,meters=True)
+                    com.linTraverse(distance-0.40,meters=True)
                     time.sleep(9)
                     print(type(result),result)
                     distance = round(result[0][0]/100/3.281,3)

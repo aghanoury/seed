@@ -44,6 +44,7 @@ class Finder:
         self.run_thread = True
         
         self.thread = threading.Thread(target=self.detection_thread)
+        self.did_detect = False
     
     def start(self):
         # Easy method to start marker detection
@@ -85,6 +86,7 @@ class Finder:
 
         # Run if markers are detected
         if detection[1] is not None:
+            self.did_detect = True
             for i in range(len(detection[1])):
                 marker_id = detection[1][i][0]
                 
@@ -100,3 +102,6 @@ class Finder:
                 # Updates marker entries in dictionary
                 self.markers[marker_id] = (distance, angle_h, angle_v, time.time())
                 # self.markers[marker_id] = (z, angle_h, angle_v, time.time())
+            else:
+                self.did_detect = False
+                
