@@ -22,13 +22,13 @@ class Capturer:
             
         self.count = 0;
     
-    def capture_loop():
+    def capture_loop(self):
         val = ''
         while True:
             val = input("Capture Image? q to quit")
             if val == 'q':
                 break
-            camera.capture(os.path.join(self.folder, '{}.png'.format(self.count)))
+            self.camera.capture(os.path.join(self.folder, '{}.png'.format(self.count)))
             self.count += 1
 
 c = Capturer()

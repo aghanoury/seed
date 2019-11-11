@@ -67,7 +67,7 @@ class Comms(object):
         self.r = r or self.r
         self.d = d or self.d
 
-        self.thread = threading.Thread(target=self.state_thread)
+        # self.thread = threading.Thread(target=self.state_thread)
 
         print("""Initialized Comms with the following Robot Parameters
 Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
@@ -103,9 +103,9 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
 
     # def write_to_lcd(self, message): FIXME
 
-    def state_detect_thread_start(self, interval=0.25):
-        self.thread.start(interval)
-    def state_thread(self, interval):
+    # def state_detect_thread_start(self, interval=0.25):
+    #     self.thread.start(interval)
+    # def state_thread(self, interval):
         
     # extraneous function, future version may deprecate
     def input_handler(self, command):

@@ -16,12 +16,13 @@ r = 78
 d = 69
 
 # init comms obj
-try:
-    com = Comms("CREAMSOUP\nSUPERBOT AI")
-except:
-    print("Failed to init Comms class")
-    print("Is the arduino on and i2c connected?\nExiting")
-    exit(14)
+com = Comms()
+# try:
+#     com = Comms("CREAMSOUP\nSUPERBOT AI")
+# except:
+#     print("Failed to init Comms class")
+#     print("Is the arduino on and i2c connected?\nExiting")
+#     exit(14)
 # com.startup_color_sequence()
 
 PRINT_CV = 69
@@ -101,7 +102,7 @@ while True:
     elif command == PRINT_CV:
 
         while True:
-            while (f.did_detect == True):
+            try:
                 result = f.markers
                 distance = round(result[0][0]/100,3)
                 angle = round(result[0][1],3)
@@ -115,6 +116,9 @@ while True:
                 com.lcd.message = st
                 print(result)
                 time.sleep(0.1)
+
+            except KeyboardInterrupt:
+                break
 
     elif command == FIND_N_GO:
 
@@ -143,8 +147,10 @@ while True:
                     print(distance, angle)
                     com.rotate(angle, radians=True)
                     time.sleep(2)
-                    com.linTraverse(distance-0.40,meters=True)
+                    print(distance)
+                    com.linTraverse(distance-0.9,meters=True)
                     time.sleep(9)
+                    print(type(result),result)
                     distance = round(result[0][0]/100/3.281,3)
                     print(distance)
                     com.rotate(-90)
