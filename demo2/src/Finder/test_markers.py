@@ -14,7 +14,7 @@ m = 0.0892
 b = 0.4012
 
 # Image is captured to bit stream and decoded
-initial = cv2.imread("../../../test_pics/300cm.jpg")
+initial = cv2.imread("Captures/6.png")
 img = cv2.resize(initial, (800, 600))
 
 # Image is converted to grayscale first
@@ -32,10 +32,15 @@ thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
 detection = aruco.detectMarkers(thresh, aruco_dict)
 rvecs, tvecs, wvecs = aruco.estimatePoseSingleMarkers(detection[0], 76.2, camera_matrix, dist_coeffs)
 
+pos1 = None;
+pos2 = None;
 # Run if markers are detected
 if detection[1] is not None:
     for i in range(len(detection[1])):
         marker_id = detection[1][i][0]
+        
+        xa, ya, za = tvecs[i][0]
+        x0, y0, z0 = m*tvecs[i][0] + b
         
         # Correct position
         pos = np.matrix.transpose(np.matrix(m*tvecs[i][0] + b))
@@ -44,22 +49,31 @@ if detection[1] is not None:
         rotation_matrix = cv2.Rodrigues(rvecs[i])[0]
         
         # Scaled for 2.5 in.
-        normal = np.matrix([[0], [0], [63.5]])        
+        normal = np.matrix([[0], [0], [6.35]])        
         result = pos - rotation_matrix * normal
         
-        x = result[0][0]
-        y = result[1][0]
-        z = result[2][0]
+        if pos1 is None:
+            pos1 = result
+        else:
+            pos2 = result
+        
+        x = result.item(0)
+        y = result.item(1)
+        z = result.item(2)
         
         angle_h = math.atan(x/z)
         angle_v = math.atan(y/z)
         
-        print("Marker Stats:")
-        print(x)
-        print(y)
-        print(z)
+        print("Marker {} Stats:".format(marker_id))
+        print("{} -> {} -> {}".format(xa, x0, x))
+        print("{} -> {} -> {}".format(ya, y0, y))
+        print("{} -> {} -> {}".format(za, z0, z))
         print(angle_h)
         print(angle_v)
         
         # Updates marker entries in dictionary
         #markers[marker_id] = (distance, angle_h, angle_v, time.time())
+        
+if pos1 is not None and pos2 is not None:
+    print("Distance:")
+    print(pos2 - pos1)

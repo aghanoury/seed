@@ -65,6 +65,7 @@ class Finder:
         # Image is captured to bit stream and decoded
         img_stream = io.BytesIO()
         self.camera.capture(img_stream, 'jpeg')
+        detect_time = time.time();
         img_stream.seek(0)
         img_bytes = np.asarray(bytearray(img_stream.read()), dtype=np.uint8)
         img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
@@ -83,10 +84,11 @@ class Finder:
         # Use built-in detection method
         detection = aruco.detectMarkers(thresh, aruco_dict)
         rvecs, tvecs, wvecs = aruco.estimatePoseSingleMarkers(detection[0], 76.2, self.camera_matrix, self.dist_coeffs)
+        
 
         # Run if markers are detected
         if detection[1] is not None:
-
+            new_detection = {}
             self.did_detect = True
             for i in range(len(detection[1])):
                 marker_id = detection[1][i][0]
@@ -98,21 +100,28 @@ class Finder:
                 rotation_matrix = cv2.Rodrigues(rvecs[i])[0]
                 
                 # Scaled for 2.5 in.
-                normal = np.matrix([[0], [0], [63.5]])        
+                normal = np.matrix([[0], [0], [6.35]])        
                 result = pos - rotation_matrix * normal
                 
-                x = result[0][0]
-                y = result[1][0]
-                z = result[2][0]
+                x = result.item(0)
+                y = result.item(1)
+                z = result.item(2)
                 
                 angle_h = math.atan(x/z)
                 angle_v = math.atan(y/z)
                 
                 # Angle Correction
                 angle_h = angle_h*1.1136 - 0.0109
-
+                
                 # Updates marker entries in dictionary
-                self.markers[marker_id] = (distance, angle_h, angle_v, time.time())
+                if self.markers.has_key(marker_id) and self.markers[marker_id][3] == detect_time:
+                    m = self.markers[marker_id]
+                    z_avg = (m[0] + z)/2
+                    h_avg = (m[1] + angle_h)/2
+                    v_avg = (m[2] + angle_v)/2
+                    self.markers[marker_id] = (z_avg, h_avg, v_avg, detect_time)
+                else:
+                    self.markers[marker_id] = (z, angle_h, angle_v, detect_time)
                 # self.markers[marker_id] = (z, angle_h, angle_v, time.time())
         else:
             self.did_detect = False
