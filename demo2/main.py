@@ -8,7 +8,7 @@ import time
 # change to true to run cv
 if True:
     f = Finder() # init CV object
-    f.start() # starts its own thread
+    # f.start() # starts its own thread
 
 
 # robot parameters
@@ -50,7 +50,8 @@ while True:
 
     # get user input
     try:
-        key = list(cmds)[int(input("Command: "))-1]
+        inp = input("Commands: ")
+        key = list(cmds)[int(inp)-1]
         command = cmds[key]
     except KeyboardInterrupt:
         print("Keyboard Interrupt --> Exiting")
@@ -124,21 +125,30 @@ while True:
 
         while True:
             if(input("Auto Detect [y/n]: ") == 'y'):
-                timeout = time.time() + 15   # 5 minutes from now
+                timeout = time.time() + 25   # 5 minutes from now
                 com.search()
 
                 try:
                     while f.did_detect == False:
+                        com.rotate(25)
+                        time.sleep(0.5)
+                        f.find_markers()
                         if time.time() > timeout:
                             print('Timeout')
                             break
+                        
                 except KeyboardInterrupt:
                     print("Keyboard interrupt. Returning to Home")
                     com.stop()
                     break
+                
                 com.stop()
 
                 time.sleep(2)
+                if not f.did_detect:
+                    print("Did not find a marker")
+                    break
+                
                 result = f.markers
                 distance = round(result[0][0]/100,3)
                 angle = round(-result[0][1],3)
@@ -147,12 +157,11 @@ while True:
                     print(distance, angle)
                     com.rotate(angle, radians=True)
                     time.sleep(2)
-                    print(distance)
-                    com.linTraverse(distance-0.40,meters=True)
+
+                    com.linTraverse((distance*2)-0.25,meters=True)
                     time.sleep(9)
-                    print(type(result),result)
-                    distance = round(result[0][0]/100/3.281,3)
-                    print(distance)
+                    distance = round(result[0][0]/100,3)
+                    print("Distance: ", distance)
                     com.rotate(-90)
                     time.sleep(4)
                     com.stop()
@@ -163,15 +172,6 @@ while True:
                     print("Keyboard interrupt. Returning to Home")
                     com.stop()
                     break
-
-
-
-                # print("Distance: {}    Angle: {} ".format(distance, angle))
-                # print(f.did_detect)
-                # time.sleep()
-            
-
-
 
             else:
                 break

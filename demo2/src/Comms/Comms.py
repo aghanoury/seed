@@ -162,7 +162,7 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
         theta = distance / self.r * 2.0
         payload = [self.LINEAR_TRAVERSE, float(-theta), float(theta)]
         self.sendData(payload)
-        print("TRAVERSING {} ft.".format(distance))
+        print("TRAVERSING {} meters.".format(distance))
 
     def circularTraverse(self, radius, direction="left",portion=1):
         # direction will usually be left if traversing
@@ -219,11 +219,15 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
             print("Attempting to send more than 32 bytes\nAborting Send")
             return
 
-        try:
-            self.bus.write_i2c_block_data(self.address, data[0], payload)
-        except:
-            print("Failed to transmit packet, did arduino crash?")
-       
+        # enter loop until packet sends succ-essfully
+        while True:
+            try:
+                self.bus.write_i2c_block_data(self.address, data[0], payload)
+                break
+            except:
+                print("Failed to transmit packet, did arduino crash?")
+                print("attempting to send again in 0.8 sec")
+                time.sleep(0.8)
         return
 
 
