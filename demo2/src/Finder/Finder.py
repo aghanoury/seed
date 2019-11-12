@@ -85,21 +85,19 @@ class Finder:
         detection = aruco.detectMarkers(thresh, aruco_dict)
         rvecs, tvecs, wvecs = aruco.estimatePoseSingleMarkers(detection[0], 76.2, self.camera_matrix, self.dist_coeffs)
         
-
         # Run if markers are detected
         if detection[1] is not None:
-            new_detection = {}
             self.did_detect = True
             for i in range(len(detection[1])):
                 marker_id = detection[1][i][0]
                 
-                # Correct position
+                # Correct position in cm
                 pos = np.matrix.transpose(np.matrix(m*tvecs[i][0] + b))
                 
                 # Get rotation matrix of marker
                 rotation_matrix = cv2.Rodrigues(rvecs[i])[0]
                 
-                # Scaled for 2.5 in.
+                # Converts 2.5in to 6.35mm
                 normal = np.matrix([[0], [0], [6.35]])        
                 result = pos - rotation_matrix * normal
                 
@@ -113,16 +111,16 @@ class Finder:
                 # Angle Correction
                 angle_h = angle_h*1.1136 - 0.0109
                 
-                # Updates marker entries in dictionary
+                # If the marker has been detected this cycle, average the values
                 if self.markers.has_key(marker_id) and self.markers[marker_id][3] == detect_time:
                     m = self.markers[marker_id]
                     z_avg = (m[0] + z)/2
                     h_avg = (m[1] + angle_h)/2
                     v_avg = (m[2] + angle_v)/2
                     self.markers[marker_id] = (z_avg, h_avg, v_avg, detect_time)
+                # Otherwise update marker entries in dictionary
                 else:
                     self.markers[marker_id] = (z, angle_h, angle_v, detect_time)
-                # self.markers[marker_id] = (z, angle_h, angle_v, time.time())
         else:
             self.did_detect = False
                 

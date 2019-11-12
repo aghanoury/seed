@@ -14,7 +14,7 @@ m = 0.0892
 b = 0.4012
 
 # Image is captured to bit stream and decoded
-initial = cv2.imread("Captures/6.png")
+initial = cv2.imread("Captures/1.png")
 img = cv2.resize(initial, (800, 600))
 
 # Image is converted to grayscale first
@@ -74,6 +74,6 @@ if detection[1] is not None:
         # Updates marker entries in dictionary
         #markers[marker_id] = (distance, angle_h, angle_v, time.time())
         
-if pos1 is not None and pos2 is not None:
+if pos2 is not None:
     print("Distance:")
     print(pos2 - pos1)
