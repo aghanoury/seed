@@ -20,6 +20,7 @@ try:
     com = Comms() 
 except:
     print("FAILED TO INIT COMMS\nIs arduino on?")
+    exit(0)
 
 
 
@@ -40,7 +41,13 @@ cmds['debug CV'] = PRINT_CV
 cmds['FIND_N_GO'] = FIND_N_GO
 cmds['request data'] = REQUEST
 
-
+def wait(delay=0.3, timeout=15):
+    timeout = time.time() + timeout
+    time.sleep(delay)
+    while gpio.input(17) == False or com.did_send_packet == False:
+        if time.time() > timeout:
+            print("FAILED TO VERIFY MOTION TERMINATION\nEXITING")
+            exit(-1) 
 
 # continously prompt for user commands
 while True:
@@ -53,9 +60,6 @@ while True:
     # get user input
     try:
         inp = input("Commands: ")
-        if inp == 'e':
-            print("EXITING")
-            exit(0)
         key = list(cmds)[int(inp)-1]
         command = cmds[key]
     except KeyboardInterrupt:
@@ -136,60 +140,55 @@ while True:
         rotate = input('Rotate at end [y/n]: ')
 
 
-        while True:
-            try:
-                timeout = time.time() + 25
+        time_start = time.time()
+        try:
+            timeout = time.time() + 25
+            f.find_markers()
+            # com.search() 
+            # begin serach
+            while f.did_detect == False:
+                if direction == 'r':
+                    com.rotate(-25)
+                else:
+                    com.rotate(25)
+            
+                wait(0.2)
                 f.find_markers()
-                # com.search() 
-                # begin serach
-                while f.did_detect == False:
-                    if direction == 'r':
-                        com.rotate(-25)
-                    else:
-                        com.rotate(25)
-                
-                    wait(0.1)
-                    f.find_markers()
-                    if time.time() > timeout:
-                        print('Timeout')
-                        break
-                        
-                com.stop()
-                time.sleep(2)
-                if not f.did_detect:
-                    print("Did not find a marker")
-                    break
-                
-                distance = round(f.markers[0][0]/100,3)
-                angle = round(-f.markers[0][1],3)
-                
-                print("Found Marker {} meters {} radians".format(distance, angle))
-                com.rotate(angle, radians=True)
+                # f.find_markers()
+                if time.time() > timeout:
+                    print('Timeout')
+                    pass
+                    
+            com.stop()
+            f.find_markers()
+            # if not f.did_detect:
+            #     print("Did not find a marker")
+            #     break
+            
+            distance = round(f.markers[0][0]/100,3)
+            angle = round(-f.markers[0][1],3)
+            
+            print("Found Marker {} meters {} radians".format(distance, angle))
+            com.rotate(angle, radians=True)
+            wait(0.2)
+
+            com.linTraverse((distance)-0.30,meters=True)
+            wait(0.2)
+
+            distance = round(f.markers[0][0]/100,3)
+            print("Distance: ", distance)
+
+            if rotate == 'y':
+                com.rotate(-90)
                 wait(0.2)
 
-                com.linTraverse((distance)-0.35,meters=True)
+                com.circularTraverse(1.4*0.3048, direction='left')
                 wait(0.2)
+            
+        except KeyboardInterrupt:
+            print("Keyboard interrupt. Returning to Home")
+            com.stop()
 
-                distance = round(result[0][0]/100,3)
-                print("Distance: ", distance)
-
-                if rotate == 'y':
-                    com.rotate(-90)
-                    wait(0.2)
-
-                    com.circularTraverse(1.4*0.3048, direction='left')
-                    wait(0.2)
-                
-            except KeyboardInterrupt:
-                print("Keyboard interrupt. Returning to Home")
-                com.stop()
-                break
-
-
-def wait(delay=0.3, timeout=15):
-    timout = time.time() + timeout
-    time.sleep(delay)
-    while gpio.input(17) == False:
-        if time.time() > timeout:
-            print("FAILED TO VERIFY MOTION TERMINATION\nEXITING")
-            exit(-1) 
+        time_end = time.time()
+        duration = time_end-time_start
+        print("Completed in {} sec".format(duration))

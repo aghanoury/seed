@@ -30,6 +30,7 @@ class Finder:
         self.camera.shutter_speed = 7000
         self.camera.awb_mode = 'off'
         self.marker_detection = {}
+        self.camera.iso = 1600
         
         # Camera calibration for 800x600 images
         # self.camera_matrix = np.load('mat800x600.npy')

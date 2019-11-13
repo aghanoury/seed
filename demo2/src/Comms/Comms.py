@@ -72,12 +72,8 @@ class Comms(object):
 
         self.r = r or self.r
         self.d = d or self.d
-
-        
-
-
         self.state = self.NEUTRAL
-        
+        self.did_send_packet = False
         self.thread = threading.Thread(target=self.state_thread)
 
         print("""Initialized Comms with the following Robot Parameters
@@ -226,6 +222,7 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
     # the most important
     def sendData(self, data):
         
+        self.did_send_packet = False
         payload = []
 
         if type(data) != list:
@@ -254,11 +251,14 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
         while True:
             try:
                 self.bus.write_i2c_block_data(self.address, data[0], payload)
+                self.did_send_packet = True
                 break
             except:
                 print("Failed to transmit packet, did arduino crash?")
                 print("attempting to send again in 0.8 sec")
                 time.sleep(0.8)
+
+        
         return
 
 
