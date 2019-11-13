@@ -172,12 +172,14 @@ while True:
 
                 distance = round(result[0][0]/100,3)
                 print("Distance: ", distance)
-                com.rotate(-90)
-                wait(0.2)
 
-                com.circularTraverse(1.4*0.3048, direction='left')
-                wait(0.2)
+                if rotate == 'y':
+                    com.rotate(-90)
+                    wait(0.2)
 
+                    com.circularTraverse(1.4*0.3048, direction='left')
+                    wait(0.2)
+                
             except KeyboardInterrupt:
                 print("Keyboard interrupt. Returning to Home")
                 com.stop()
