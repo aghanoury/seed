@@ -8,6 +8,10 @@ import time
 import struct
 import threading
 from subprocess import Popen, PIPE
+import RPi.GPIO as gpio
+
+
+
 
 class Comms(object):
     
@@ -24,6 +28,7 @@ class Comms(object):
     # i2c tranmission packet 
     
     """ protocol """
+    NEUTRAL = 0x00
     STOP = 0x01
     SEARCH = 0x02
     LINEAR_TRAVERSE = 0x03
@@ -39,8 +44,9 @@ class Comms(object):
     commands['search'] = SEARCH
     commands['stop'] = STOP
 
+ 
 
-    def __init__(self, init_string=None, r=None, d=None):
+    def __init__(self, init_string=None, r=None, d=None, pinout=17):
         
         # init lcd display
         default_message = "Creamsoup\nSuperbot AI"
@@ -67,11 +73,36 @@ class Comms(object):
         self.r = r or self.r
         self.d = d or self.d
 
-        # self.thread = threading.Thread(target=self.state_thread)
+        
+
+
+        self.state = self.NEUTRAL
+        
+        self.thread = threading.Thread(target=self.state_thread)
 
         print("""Initialized Comms with the following Robot Parameters
 Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
+    
+    def start_state_detection(self):
+        self.thread.start()
 
+    def state_thread(self,delay=0.25):
+        while True:
+            self.scan_state()
+            time.sleep(delay)
+    
+    
+    def scan_state(self, timeout=15):
+        
+        print("broken function")
+
+
+    def is_moving(self):
+        if self.state != self.NEUTRAL:
+            return False
+        else:
+            return True
+    
     # set up functions
     def startup_color_sequence(self):
         self.set_screen_color("100 0 0")

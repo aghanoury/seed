@@ -13,13 +13,12 @@ import time
 aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
 
 # Constants for linear regression
-m = 0.0892
-b = 0.4012
 
 # Markers are 3 in, or 76.2 mm
-marker_width = 76.2
 
 class Finder:
+
+    
     def __init__(self):
         # Init function sets up camera
         self.camera = PiCamera()
@@ -62,6 +61,9 @@ class Finder:
             #print(self.markers)
 
     def find_markers(self):
+        m = 0.0892
+        b = 0.4012
+        marker_width = 76.2
         # Image is captured to bit stream and decoded
         img_stream = io.BytesIO()
         self.camera.capture(img_stream, 'jpeg')
@@ -112,7 +114,7 @@ class Finder:
                 angle_h = angle_h*1.1136 - 0.0109
                 
                 # If the marker has been detected this cycle, average the values
-                if self.markers.has_key(marker_id) and self.markers[marker_id][3] == detect_time:
+                if marker_id in self.markers and self.markers[marker_id][3] == detect_time:
                     m = self.markers[marker_id]
                     z_avg = (m[0] + z)/2
                     h_avg = (m[1] + angle_h)/2

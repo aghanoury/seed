@@ -2,6 +2,11 @@ import numpy as np
 from src import Comms
 from src import Finder
 import time
+import RPi.GPIO as gpio
+
+gpio.setmode(gpio.BCM)
+gpio.setup(17, gpio.IN)
+
 
 """ Main Runner Script for Demo 1 """
 
@@ -17,6 +22,8 @@ d = 69
 
 # init comms obj
 com = Comms()
+time.sleep(1)
+# com.start_state_detection()
 # try:
 #     com = Comms("CREAMSOUP\nSUPERBOT AI")
 # except:
@@ -27,6 +34,7 @@ com = Comms()
 
 PRINT_CV = 69
 FIND_N_GO = 70
+REQUEST = 80
 
 # small dictionary of commands
 # add more commands to the comms class
@@ -35,6 +43,7 @@ cmds = com.commands
 # added tmp commands
 cmds['debug CV'] = PRINT_CV
 cmds['FIND_N_GO'] = FIND_N_GO
+cmds['request data'] = REQUEST
 
 # commands = {"angle change": com.CHANGE_ANGLE, "linear traverse": com.}
 # commands = {1: com.ROTATE, 2: com.LINEAR_TRAVERSE, 3: PRINT_CV, 4: FIND_N_GO}
@@ -97,6 +106,8 @@ while True:
             print("invalid direction")
 
 
+    elif command == REQUEST:
+        print(gpio.input(17))
 
 
 
@@ -104,6 +115,7 @@ while True:
 
         while True:
             try:
+                f.find_markers()
                 result = f.markers
                 distance = round(result[0][0]/100,3)
                 angle = round(result[0][1],3)
@@ -115,7 +127,7 @@ while True:
                 except:
                     st = "None"
                 com.lcd.message = st
-                print(result)
+                # print(result)
                 time.sleep(0.1)
 
             except KeyboardInterrupt:
@@ -126,8 +138,8 @@ while True:
         while True:
             if(input("Auto Detect [y/n]: ") == 'y'):
                 timeout = time.time() + 25   # 5 minutes from now
+                f.find_markers()
                 com.search()
-
                 try:
                     while f.did_detect == False:
                         com.rotate(25)
@@ -156,18 +168,23 @@ while True:
                 try:
                     print(distance, angle)
                     com.rotate(angle, radians=True)
-                    time.sleep(2)
+                    time.sleep(0.2)
+                    while gpio.input(17) == False: pass
 
-                    com.linTraverse((distance*2)-0.25,meters=True)
-                    time.sleep(9)
+                    com.linTraverse((distance)-0.40,meters=True)
+                    time.sleep(0.2)
+                    while gpio.input(17) == False: pass
+
                     distance = round(result[0][0]/100,3)
                     print("Distance: ", distance)
                     com.rotate(-90)
-                    time.sleep(4)
-                    com.stop()
-                    time.sleep(1)
+                    time.sleep(0.2)
+                    while gpio.input(17) == False: pass
+
                     com.circularTraverse(1.4*0.3048, direction='left')
-                    time.sleep(7)
+                    time.sleep(0.2)
+                    while gpio.input(17) == False: pass
+
                 except KeyboardInterrupt:
                     print("Keyboard interrupt. Returning to Home")
                     com.stop()
