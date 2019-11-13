@@ -10,6 +10,7 @@
 // 
 
 // TODO: implement target changing protocol
+#define REQUEST 0x00
 #define STOP 0x01
 #define SEARCH 0x02
 #define LINEAR_TRAVERSE 0x03
@@ -19,6 +20,7 @@
 // DIRECTION PINS
 #define left_dir_pin    8
 #define right_dir_pin   7
+#define status_flag     11
 
 // with this, we can assign directions to the motors
 // EX: left_motor_direction = backward; // assigns backward (int 0) 
@@ -99,7 +101,7 @@ float circle_rad = 0;
 float angVel; // angular velocity of...? might need
 float cumError_R = 0;// speaks for itself
 float cumError_L = 0;// speaks for itself
-float cumError_Dif = 0; // speaks for itself
+float cumError_Dif = 0; // speaks for itself 
 float elapsedTime = 0; 
 float lastError_R = 0;
 float lastError_L = 0;
@@ -195,7 +197,7 @@ void setup() {
   pinMode(8, OUTPUT);
   pinMode(9, OUTPUT);
   pinMode(10, OUTPUT);
-
+  pinMode(11, OUTPUT);
   pinMode(12, INPUT);
 
   knobLeft.write(0);
@@ -203,7 +205,7 @@ void setup() {
 
   Wire.begin(8);                // join i2c bus with address #8
   Wire.onReceive(receiveEvent); // register event
-//  Wire.onRequest(requestEvent); // might need this later
+
 
 //  lcd.init();
 //  lcd.backlight();
@@ -405,6 +407,13 @@ void set_zero(){
   rateerror_master = 0;
   slave_error = 0;
   circle_rad = 0;
+
+  left_exited_hunt = false;
+  right_exited_hunt = false;
+  
+  cumerror_master = 0;
+  error_master = 0;
+  master_act_signal = 0;
   
 }
 
@@ -535,23 +544,27 @@ void receiveEvent() {
     target_right_angle = 0;
     state = neutral;
   }
+  
   else if (instruction == SEARCH) {
     target_left_angle = *(float*) &packets[2];
     target_right_angle = *(float*) &packets[6];
     state = searching;
     
   }
+  
   else if (instruction == LINEAR_TRAVERSE) {
     target_left_angle = *(float*) &packets[2];
     target_right_angle = *(float*) &packets[6];    
     state = lin_traversal;
   }
+  
   else if (instruction  == CIRCULAR_TRAVERSE) {
     target_left_angle = *(float*) &packets[2];
     target_right_angle = *(float*) &packets[6];
     circle_rad = *(float*) &packets[10];   
     state = cir_traversal; 
   }
+  
   else if (instruction == ROTATE) {
     target_left_angle = *(float*) &packets[2];
     target_right_angle = *(float*) &packets[6];
@@ -562,14 +575,12 @@ void receiveEvent() {
     state = rotating;
   }
 
-  left_exited_hunt = false;
-  right_exited_hunt = false;
+//  
+//  else if (instruction != REQUEST) {
+//    digitalWrite(status_flag, LOW);
+//  }
   
-  cumerror_master = 0;
-  error_master = 0;
-  master_act_signal = 0;
-  
-  
+  Serial.println(instruction);
 }
 
 
@@ -586,9 +597,14 @@ void loop() {
 
   left_wheel_theta = (new_left_encoder * tick_rad);
   right_wheel_theta = (new_right_encoder * tick_rad);
+
+  if (state != neutral) {
+    digitalWrite(status_flag, LOW);
+  }
   switch(state){
     case neutral:
       set_zero();
+      digitalWrite(status_flag, HIGH);
       break;
       
     case rotating:
@@ -621,8 +637,9 @@ void loop() {
     default:
       Serial.println("wack");
       break;
-    
+ 
   }
+
 //  Serial.println(state);
 //  Serial.print(target_left_angle);
 //  Serial.print(" ");
@@ -848,30 +865,4 @@ if (error_master < (pi*(9/2))){
     }
  }
  return master_act_signal;
-  }
-
-
-
-
-
-// ----- COMMS -------
-// WARNING: THIS FUNCTION WILL BREAK. 
-// (FROM RPI) DO NOT REQUEST INFORMATION FROM ARUINO AT THIS CURRENT STATE
-//void requestEvent(){
-////  Serial.println("Enter Request");
-//  if (operation == READ_ANGLE) {
-//
-//    long *target_pos_int = (long*) &phiOld;
-//    uint8_t *float_bytes = new uint8_t[4];
-//    
-//    for (uint8_t i = 0; i < 4; i++){
-//      float_bytes[i] = uint8_t(*target_pos_int >> (i << 3));
-//    }
-//    Wire.write(float_bytes, 4);
-//
-//    delete target_pos_int;
-//    delete float_bytes;
-//    
-//  }
-////  Serial.println("Exit Request");
-//}
+}
