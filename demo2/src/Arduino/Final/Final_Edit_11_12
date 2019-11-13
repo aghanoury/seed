@@ -109,11 +109,11 @@ float rateError_R = 0;
 float rateError_L = 0;
 
 float Kp_R = 5;
-float Ki_R = 10;
+float Ki_R = 10;  // 15
 float Kd_R = 7;
 
 float Kp_L = 5;
-float Ki_L = 10;
+float Ki_L = 10;  //15
 float Kd_L = 7;
 
 float Kp_Dif = 100;
@@ -128,9 +128,9 @@ float errorZeroOut = 0.0349066;
 float accl_roof_R = 5;
 float accl_roof_L = 5;
 
-float cumError_Limit = 7;
+float cumError_Limit = 12;  //7
 float huntSpeedParameter = 1;
-float angleWindow = pi/90;
+float angleWindow = pi/20;  // dev 90
 int accelDampen = 250;
 int prop_cap = 150;
 
