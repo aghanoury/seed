@@ -1,6 +1,4 @@
 # Comms Class 2.0
-**NOTE**: In its current state, reading information from the Arduino does is not fully implemented and may cause a crash
-
 
 The past assignments were key challenges that helped develop the foundation for communications. In demo 1, we developed the necessary lower-level protocols needed for basic command and control. It was also a great time for establishing the accruacy of our control algorithms. 
 
@@ -48,6 +46,10 @@ def linTraverse(self, distance, meters=False):
 def circularTraverse(self, radius, direction="left",portion=1):
 
 ```
+
+### Reading Data
+In our program, the only way to read information from the Arduino is by checking the state of a pin 10 on the Arduino. When the pin is sit to HIGH, the robot is motionless and in a neutral. When set to low, the bot is in a state of motion.
+
 
 ### Parameters
 ```py
