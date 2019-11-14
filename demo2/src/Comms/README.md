@@ -4,33 +4,74 @@
 
 The past assignments were key challenges that helped develop the foundation for communications. In demo 1, we developed the necessary lower-level protocols needed for basic command and control. It was also a great time for establishing the accruacy of our control algorithms. 
 
-Demo 2 brings about a new challenge which requires further abstracton of our protocols and procedures. Comms 2.0 features a heavily updated and cleaner API. This new interface handles low-level operations and simiplifies the process of sending commands.
+Demo 2 brings about a new challenge which requires further abstracton of our protocols and procedures. Comms 2.0 features a heavily updated and cleaner API. This new interface handles low-level operations and simplifies the process of sending commands.
 
-
-## Packets
-This class was designed to send only floats. The packet structure is as follows
-
-## Parameters
-```py
-CHANGE_POS = 0x03
-WRITE_ANGLE = 0x09
-READ_ANGLE = 0x0A
-```
 ## How to use
 
 ### Initializing
 ```py
 import numpy as np
 from Comms import Comms
-com = Comms("SUPERBOT") # init a comms object. init string writes to string
+com = Comms()
+```
+### Optional specifications
+The comms class is preinitialized with default robot parameters. You can optionally initialize the comms class with new parameters for quick tweaking from `main`. 
+```py
+def __init__(self, init_string=None, r=None, d=None, pinout=17):
+```
+Where `r` is the radius of the wheel, `d` is the distance between the wheels, and `pinout` is the GPIO pin indicating the status of the Arduino.
+
+
+
+### Performing commands
+This new class abstracts the following essential commands. This makes it easier to control the robot and hides the lower-level calculations. 
+- Stop
+- Rotate
+- Linear traverse
+- Circular traverse
+
+Each require a specific set of arguments.
+```py
+# requires no arguments
+def stop(self):
+
+# rotate by how many degrees. In radians?
+def rotate(self, angle, radians=False):
+
+# move by what distance (this can be negative). In meters?
+def linTraverse(self, distance, meters=False):
+    
+# the most complex of the moves. 
+# radius (from center of axis) 
+# direction to rotate (about the left side, or right side)
+# portion, the amount of the full circle to go. this argument has not been implemeneted
+def circularTraverse(self, radius, direction="left",portion=1):
+
 ```
 
-### Sending Data
+### Parameters
+```py
+NEUTRAL = 0x00
+STOP = 0x01
+SEARCH = 0x02
+LINEAR_TRAVERSE = 0x03
+CIRCULAR_TRAVERSE = 0x04
+ROTATE = 0x05
+REQUEST = 0x06
+```
+
+
+
+---
+### Sending Raw Data
+**WARNING:** This edition of Comms simplifies motions. Since we can't have truly private functions in python, the user can still call `_sendData()` directly, but should do so with extreme caution. 
+
 Contruct a list such that the first element is the instruction. Every element following the instruction should be of type **float**. For most cases, you will only need to send an instruction and a single value.
 
+In this example, we tell the bot to rotate perform a rotation where each of it's wheels should rotate pi/2 radians
 ```py
-payload = [com.WRITE_ANGLE, np.pi/2] # Construct a packet
-com.sendData(payload) # send data
+payload = [com.ROTATE, np.pi/2, np.pi/2] # Construct a packet
+com._sendData(payload) # send data
 ```
 
 **NOTE**: If you try to send data in the form of a string, or if float values are not of type float, the function call will simply return without sending any data to the arduino. 

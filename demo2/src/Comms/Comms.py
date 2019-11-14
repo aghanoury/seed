@@ -167,11 +167,11 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
     def search(self):
         angle1 = 2*np.pi
         theta = angle1 * self.d / self.r
-        self.sendData([self.SEARCH, float(theta), float(theta)])
+        self._sendData([self.SEARCH, float(theta), float(theta)])
         print('SENT SIG SEARCH')
 
     def stop(self):
-        self.sendData([self.LINEAR_TRAVERSE, 0.0, 0.0])
+        self._sendData([self.LINEAR_TRAVERSE, 0.0, 0.0])
         print("SENT SIG STOP")
 
     def rotate(self, angle, radians=False):
@@ -179,7 +179,7 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
         if radians == False:
             angle *= np.pi/180
         theta = angle * self.d / self.r
-        self.sendData([self.ROTATE, theta, theta])
+        self._sendData([self.ROTATE, theta, theta])
         print("ROTATING WHEELS {} RADS".format(theta))
 
 
@@ -188,7 +188,7 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
             distance = distance/3.281
         theta = distance / self.r * 2.0
         payload = [self.LINEAR_TRAVERSE, float(-theta), float(theta)]
-        self.sendData(payload)
+        self._sendData(payload)
         print("TRAVERSING {} meters.".format(distance))
 
     def circularTraverse(self, radius, direction="left",portion=1):
@@ -216,11 +216,11 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
         payload.append(float(theta_l))
         payload.append(float(theta_r))
         payload.append(float(radius))
-        self.sendData(payload)
+        self._sendData(payload)
 
         
     # the most important
-    def sendData(self, data):
+    def _sendData(self, data):
         
         self.did_send_packet = False
         payload = []
