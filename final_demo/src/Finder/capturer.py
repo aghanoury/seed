@@ -29,7 +29,7 @@ class Capturer:
             val = input("Capture Image? q to quit")
             if val == 'q':
                 break
-            capture()
+            self.capture()
             
     
     def capture(self):
