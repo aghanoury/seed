@@ -1,0 +1,868 @@
+//////---------------------------------------------------------------------------------------------------------------------------//////
+//Author: Ian Welch, Dan McElroy, Pooya Aghanoury, Jason Matney
+//Course: SEED Lab
+//Problem Description: Execute command and control from raspberry pi. 
+
+#include <Encoder.h>
+#include <Wire.h>
+
+
+// 
+
+// TODO: implement target changing protocol
+#define REQUEST 0x00
+#define STOP 0x01
+#define SEARCH 0x02
+#define LINEAR_TRAVERSE 0x03
+#define CIRCULAR_TRAVERSE 0x04
+#define ROTATE 0x05
+
+// DIRECTION PINS
+#define left_dir_pin    8
+#define right_dir_pin   7
+#define status_flag     11
+
+// with this, we can assign directions to the motors
+// EX: left_motor_direction = backward; // assigns backward (int 0) 
+// EX: cout << left_motor_direction << endl; // would print '0'
+//enum WheelDirection {forward = 1, backward = 0};
+//WheelDirection left_motor_direction = forward;
+//WheelDirection right_motor_direction = forward;
+
+
+
+
+// COMMS
+byte operation = 0;
+byte* packets = new byte[32]; // allocate a buffer for i2c packets
+byte instruction = 0;
+byte num_of_floats = 0;
+
+
+
+
+// USEFUL CONSTANTS (USEFUL FACTS)
+const float r = .149/2;
+const float d = 0.27;
+const float pi = 3.14159;
+
+const int ticks_per_rot = 1600; // num of ticks in a full 360 rotation 
+const float tick_rad = pi/800; // rads corresponding to a single tick
+const float tick_deg = 0.225; // degrees corresponding to a single tick
+
+// TIME
+float timeNow = 0; // captures millis() at beginning of each loop
+float lastTime = 0; // store previous "timeNow" value
+
+// POSITION
+long new_left_encoder = 0;
+long old_left_encoder  = 0;
+
+long new_right_encoder = 0;
+long old_right_encoder  = 0;
+
+
+float xNew = 0;
+float yNew = 0;
+float xOld = 0;
+float yOld = 0;
+
+float phiNew = 0;
+float phiOld = 0;
+float deltaThetaR = 0;
+float deltaThetaL = 0;
+float phiOld2;
+float phi_movement = 0;
+bool direct;
+float theta_wheel_rot = 0;
+
+// CONTROLS
+//circle stuff
+float cumerror_master = 0;
+float error_master = 0;
+float master_act_signal = 0;
+
+const float Kp_Master = 5;
+const float Ki_Master = 1;
+const float Kd_Master = 0;
+
+float lasterror_master = 0;
+float slave_position = 0;
+float slave_act_signal = 0;
+float slave_target = 0;
+float Kp_slave = 255;
+float rateerror_master = 0;
+float slave_error = 0;
+float circle_rad = 0;
+
+// STARTUP calculations
+
+
+float angVel; // angular velocity of...? might need
+float cumError_R = 0;// speaks for itself
+float cumError_L = 0;// speaks for itself
+float cumError_Dif = 0; // speaks for itself 
+float elapsedTime = 0; 
+float lastError_R = 0;
+float lastError_L = 0;
+float rateError_R = 0;
+float rateError_L = 0;
+
+float Kp_R = 5;
+float Ki_R = 10;  // 15
+float Kd_R = 7;
+
+float Kp_L = 5;
+float Ki_L = 10;  //15
+float Kd_L = 7;
+
+float Kp_Dif = 100;
+float Ki_Dif = 0;
+
+float error_Dif = 0;
+float error_R = 0;
+float error_L = 0;
+float errorZeroOut = 0.0349066;
+
+
+float accl_roof_R = 5;
+float accl_roof_L = 5;
+
+float cumError_Limit = 12;  //7
+float huntSpeedParameter = 1;
+float angleWindow = pi/20;  // dev 90
+int accelDampen = 250;
+int prop_cap = 150;
+
+int left_act_signal = 0; // what is this used for?
+int right_act_signal = 0; // what is this used for?
+int left_act_signal_old = 0; // what is this used for?
+int right_act_signal_old = 0; // what is this used for?
+
+
+
+
+// direction values
+byte left_motor_direction = 1;
+byte right_motor_direction = 0;
+
+enum State {neutral = 0, rotating = 1, lin_traversal = 2, cir_traversal = 3, searching = 4, small_angle = 5};
+State state = neutral;
+
+
+// MOTOR ENCODERS. Pins 2 and 3 are interrupt pins.//
+Encoder knobLeft(3, 6);
+Encoder knobRight(2, 5);
+
+
+
+//float targetAngle = -4*pi;
+float left_wheel_theta = 0;
+float right_wheel_theta = 0;
+
+//************************************************************************************
+float target_left_angle = 0;
+float target_right_angle = 0;
+
+//float target_left_angle = 5.759;
+//float target_right_angle = 5.759;
+
+//************************************************************************************
+bool left_exited_hunt = false;
+bool right_exited_hunt = false;
+
+
+float target_wheel_theta = 0;
+
+// FUNCTION DECLARATIONS
+float pid(float, float, float); // PID
+float outside_wheel_rotation(float);
+void requestEvent();
+void receiveEvent();
+
+
+void setup() {
+  Serial.begin(250000);
+  pinMode(2, INPUT);
+  pinMode(3, INPUT);
+
+  pinMode(5, INPUT);
+  pinMode(6, INPUT);
+
+
+  pinMode(4, OUTPUT);
+  digitalWrite(4, HIGH);
+  
+  pinMode(7, OUTPUT);
+  pinMode(8, OUTPUT);
+  pinMode(9, OUTPUT);
+  pinMode(10, OUTPUT);
+  pinMode(11, OUTPUT);
+  pinMode(12, INPUT);
+
+  knobLeft.write(0);
+  knobRight.write(0);
+
+  Wire.begin(8);                // join i2c bus with address #8
+  Wire.onReceive(receiveEvent); // register event
+
+
+//  lcd.init();
+//  lcd.backlight();
+//  lcd.setCursor(0,0);
+//  lcd.print("Trash");
+
+}
+//
+//
+////////////////////////// Function for the motor controller //////////////////////////
+// 
+//
+//TODO: convert this controller to work with milliseconds
+float pid(float current_angle_L, float target_angle_L, float current_angle_R, float target_angle_R, float elapsedTime)
+{   float actSignalSign = 0;
+//  Serial.print("Current Position = ");
+//  Serial.print(positionCur);
+//  Serial.print(", Current Time = ");
+//  Serial.print(currentTime);
+//  Serial.print(", Set Point = ");
+//  Serial.print(setPoint);
+//  Serial.println();
+    //Set times
+  
+
+
+// DERAMPER
+//    if (abs(target_angle_L)-abs(current_angle_L) > 20)
+//    {
+//      cumError_Limit = 15;
+//    }
+////    else if (abs(target_angle_L)-abs(current_angle_L) < 20 && abs(target_angle_L)-abs(current_angle_L) > 6.66){
+////      cumError_Limit = 15 - (.599*(20 - (abs(target_angle_L)-abs(current_angle_L)))) ; 
+////    }
+//    else {
+//    cumError_Limit = 5;
+//    }
+
+// LEFT WHEEL******************************************************
+      // error calculation
+      error_L = target_angle_L - current_angle_L;
+      cumError_L = cumError_L + error_L * elapsedTime;
+      rateError_L = (error_L - lastError_L)/elapsedTime;
+
+      //Serial.println(current_angle_L);
+
+      // Integrator Anti Windup
+        if(cumError_L > cumError_Limit)
+      {
+        cumError_L = cumError_Limit;
+      }
+
+      else if(cumError_L < -cumError_Limit)
+      {
+        cumError_L = -cumError_Limit;
+      }
+      else if (abs(error_L) < errorZeroOut) {
+        cumError_L = 0;
+      }
+      float val;
+      val = (Kp_L*error_L);
+      if (abs(val) > prop_cap){
+        val = -1 + (val/abs(val) * prop_cap);
+      }
+    
+      left_act_signal = (val) + (Ki_L * cumError_L) + (Kd_L * rateError_L);
+      lastError_L = error_L;
+      
+     
+      //Accleration Control
+//      if((left_act_signal - left_act_signal_old) > accl_roof_L)
+//      {
+//        left_act_signal = left_act_signal_old + accl_roof_L;
+//        left_act_signal_old = left_act_signal;   
+//      }
+
+      //Saturation
+      if (left_act_signal > 255)
+      {
+        left_act_signal = 255;
+       
+      }
+      else if (left_act_signal < -255) {
+        left_act_signal = -255;
+        
+      }
+      left_act_signal_old = left_act_signal;
+     
+      //Hunting Control
+      if ((abs(error_L) < angleWindow) && ((abs(deltaThetaL/elapsedTime)) <  huntSpeedParameter)) // 0.03490=pi/90
+      {
+        left_exited_hunt = true;
+        left_act_signal = 0;
+        error_L = 0;
+        cumError_L = 0;
+        rateError_L = 0;
+
+        //Serial.println("Hunting Control Left");
+      }
+
+  // Right WHEEL******************************************************
+      // error calculation
+      error_R = target_angle_R - current_angle_R;
+      cumError_R = cumError_R + error_R * elapsedTime;
+      rateError_R = (error_R - lastError_R)/elapsedTime;
+      
+      //Integrator Anti Windup
+      if(cumError_R > cumError_Limit)
+      {
+        cumError_R = cumError_Limit;
+      }
+
+      else if (cumError_R < -cumError_Limit) {
+        cumError_R = -cumError_Limit;
+      }
+      else if (abs(error_R) < errorZeroOut) {
+        cumError_R = 0;
+      }
+      val = (Kp_R*error_R);
+      if (abs(val) > prop_cap){
+        val = val/abs(val) * prop_cap;
+      }
+      right_act_signal = val + (Ki_R * cumError_R) + (Kd_R * rateError_R);
+      lastError_R = error_R;
+     
+      //Accleration Control
+//      if((right_act_signal - right_act_signal_old) > accl_roof_R)
+//      {
+//       right_act_signal = right_act_signal_old + accl_roof_R;
+//       right_act_signal_old = right_act_signal;
+//  
+//      }
+      //Saturation
+      if (right_act_signal > 255)
+      {
+        right_act_signal = 255;
+      }
+      else if (right_act_signal < -255) {
+        right_act_signal = -255;
+      }
+      right_act_signal_old = right_act_signal;
+      //Hunting Control
+      //Serial.print("Error Right: ");
+      //Serial.println((abs(deltaThetaR/elapsedTime)));
+      if ((abs(error_R) < angleWindow) && ((abs(deltaThetaR/elapsedTime)) <  huntSpeedParameter)) // 0.03490=pi/90
+      {
+        right_exited_hunt = true;
+        right_act_signal = 0;
+        error_R = 0;
+        cumError_R = 0;
+        rateError_R = 0;
+        //Serial.println("Hunting Control Right");
+      }
+      if (right_exited_hunt && left_exited_hunt) {
+        state = neutral;
+        //Serial.println("Entered neutral");
+      }
+//    Serial.print("Actuating Signal = ");
+//    Serial.println(left_act_signal);
+
+  //DRIFT CORRECTION*****************************************************************************************************
+
+    error_Dif = abs(current_angle_L) - abs(current_angle_R);
+//    Serial.print("cur left:");
+//    Serial.println(current_angle_L);
+
+
+
+    if (error_Dif < 0) {
+      if (left_act_signal > 0) {
+        left_act_signal += abs(error_Dif * Kp_Dif);
+      }
+      else {
+        left_act_signal -= abs(error_Dif * Kp_Dif);
+      } 
+    }
+    else if (error_Dif > 0) {
+      if (right_act_signal > 0) {
+        right_act_signal += abs(error_Dif * Kp_Dif);
+      }
+      else {
+        right_act_signal -= abs(error_Dif * Kp_Dif);
+      } 
+    }
+}
+
+
+void set_zero(){
+  knobLeft.write(0);
+  knobRight.write(0);
+  right_act_signal = 0;
+  left_act_signal = 0;
+
+  lasterror_master = 0;
+  slave_position = 0;
+  slave_act_signal = 0;
+  slave_target = 0;
+  Kp_slave = 255;
+  rateerror_master = 0;
+  slave_error = 0;
+  circle_rad = 0;
+
+  left_exited_hunt = false;
+  right_exited_hunt = false;
+  
+  cumerror_master = 0;
+  error_master = 0;
+  master_act_signal = 0;
+  
+}
+
+float object_angle(float posX, float posY, float obj_posX, float obj_posY, float phi_frame)
+{
+  phi_movement = atan2((obj_posY - posY), (obj_posX - posX)) - phi_frame; 
+  return phi_movement;
+}
+
+
+
+//CIRCLE MOVEMENT++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//
+//float cl = 2*pi*(circle_rad-(d/2))*2;
+//float cr = 2*pi*(circle_rad+(d/2))*2;
+//float cl_target = cl/r;
+//float cr_target = cr/r;
+
+
+float circleRoutine(float current_angle_L, float target_angle_L, float current_angle_R, float target_angle_R, float elapsedTime, float circle_radius)
+{
+ float sign = 0; 
+ float master_current = 0;
+ float master_target = 0;
+ float val = 0;
+ float master_integrator = 0;
+ 
+ //Finding outside wheel
+ if(target_angle_L > target_angle_R)
+ {
+ master_current = current_angle_L;
+ master_target = target_angle_L;
+ slave_position = current_angle_R;
+ }
+ else
+ {
+   master_current = current_angle_R;
+   master_target = target_angle_R;
+   slave_position = current_angle_L;
+ }
+//Serial.println(master_target - master_current);
+ error_master = master_target -  master_current;
+ cumerror_master = cumerror_master + error_master * elapsedTime;
+ rateerror_master = (error_master - lasterror_master)/elapsedTime;
+
+  //Serial.println(error_master);
+  if (abs(error_master) < errorZeroOut) 
+  {
+    state = neutral;
+    Serial.println("EnteredBitch");
+    cumerror_master = 0;
+  }
+  val = (Kp_Master*error_master);
+
+  sign = val/abs(val);
+  val = wheelSlip(abs(master_current), abs(val));
+  val = val*sign;
+
+  master_integrator = Ki_Master * cumerror_master;
+  Serial.println(master_integrator);
+  master_act_signal = (val) + (master_integrator) + (Kd_Master * rateerror_master);
+    float posneg = 0;
+    posneg = abs(master_act_signal)/master_act_signal;
+    if (abs (master_act_signal) > 255){
+    master_act_signal = 255*posneg;
+    }
+
+ master_act_signal = wheelSlipBrake(error_master, master_act_signal);
+  lasterror_master = error_master;
+  //Serial.println(master_act_signal);
+
+  slave_target = master_current*((circle_radius - (d/2))/((circle_radius + (d/2))));
+  slave_error = slave_target - slave_position;
+  slave_act_signal = slave_error*Kp_slave;
+
+  if (slave_act_signal > 255){
+    slave_act_signal = 255;
+    }
+
+  
+ if(target_angle_L > target_angle_R)
+ {
+ left_act_signal = -master_act_signal;
+ right_act_signal = slave_act_signal;
+ }
+ else
+ {
+ right_act_signal = master_act_signal;
+ left_act_signal = -slave_act_signal;
+ }
+      //if else statement to choose left/right wheel master slave actuating signals
+  
+}
+
+void beaconSearch (float current_angle_L, float current_angle_R, float slow)
+{
+ float error;
+ right_act_signal = slow;
+ left_act_signal = slow;
+
+ error = current_angle_L - current_angle_R;
+ 
+ float correction = error*10;
+ left_act_signal = left_act_signal - correction;
+}
+
+
+
+//////////////////////////////// MAIN //////////////////////////////////////////////////////////////
+// handle incomding i2c packets
+// rewrite this using the 
+void receiveEvent() {
+
+  // copy bytes into packets
+  for (byte i = 0; Wire.available(); i++) {
+    packets[i] = Wire.read();
+//    Serial.println(packets[i]);
+  }
+  
+  instruction = packets[0];
+  num_of_floats = packets[1];
+    
+  set_zero();
+
+  if (instruction == STOP) {
+    target_left_angle = 0;
+    target_right_angle = 0;
+    state = neutral;
+  }
+  
+  else if (instruction == SEARCH) {
+    target_left_angle = *(float*) &packets[2];
+    target_right_angle = *(float*) &packets[6];
+    state = searching;
+    
+  }
+  
+  else if (instruction == LINEAR_TRAVERSE) {
+    target_left_angle = *(float*) &packets[2];
+    target_right_angle = *(float*) &packets[6];    
+    state = lin_traversal;
+  }
+  
+  else if (instruction  == CIRCULAR_TRAVERSE) {
+    target_left_angle = *(float*) &packets[2];
+    target_right_angle = *(float*) &packets[6];
+    circle_rad = *(float*) &packets[10];   
+    state = cir_traversal; 
+  }
+  
+  else if (instruction == ROTATE) {
+    target_left_angle = *(float*) &packets[2];
+    target_right_angle = *(float*) &packets[6];
+    if (abs(target_left_angle) < 1.6){
+      state = small_angle;
+      return;
+    }
+    state = rotating;
+  }
+
+//  
+//  else if (instruction != REQUEST) {
+//    digitalWrite(status_flag, LOW);
+//  }
+  
+  Serial.println(instruction);
+}
+
+
+void loop() {
+  lastTime = timeNow;
+  timeNow = micros(); // grab current time
+  elapsedTime = timeNow - lastTime;
+    
+  old_left_encoder = new_left_encoder;
+  old_right_encoder = new_right_encoder;
+    
+  new_left_encoder = knobLeft.read();
+  new_right_encoder = knobRight.read();
+
+  left_wheel_theta = (new_left_encoder * tick_rad);
+  right_wheel_theta = (new_right_encoder * tick_rad);
+
+  if (state != neutral) {
+    digitalWrite(status_flag, LOW);
+  }
+  switch(state){
+    case neutral:
+      set_zero();
+      digitalWrite(status_flag, HIGH);
+      break;
+      
+    case rotating:
+      pid(left_wheel_theta, target_left_angle, right_wheel_theta, target_right_angle, elapsedTime/1000000);
+      break;
+      
+    case lin_traversal:
+      pid(left_wheel_theta, target_left_angle, right_wheel_theta, target_right_angle, elapsedTime/1000000);
+      
+      break;
+    
+    case cir_traversal:
+      left_wheel_theta = abs(left_wheel_theta);
+      right_wheel_theta = abs(right_wheel_theta);
+      circleRoutine(left_wheel_theta, target_left_angle, right_wheel_theta, target_right_angle, elapsedTime/1000000, circle_rad);
+      break;
+
+    case searching:
+      beaconSearch (left_wheel_theta, right_wheel_theta, 200);
+      break;
+
+    case small_angle:
+      Serial.println(right_wheel_theta);
+      Serial.println(target_right_angle);
+      float pwm_val = (target_right_angle < 0) ? -50 : 50;
+      beaconSearch(left_wheel_theta, right_wheel_theta, pwm_val);
+      if (abs(right_wheel_theta - target_right_angle) < 0.03) state = neutral;
+      break;
+      
+    default:
+      Serial.println("wack");
+      break;
+ 
+  }
+
+//  Serial.println(state);
+//  Serial.print(target_left_angle);
+//  Serial.print(" ");
+//  Serial.println(target_right_angle);
+//  Serial.println(circle_rad);
+////  
+
+
+  
+    
+
+
+//    Serial.println(new_left_encoder);
+//    Serial.println(new_right_encoder);
+  
+
+
+
+  
+  
+
+
+    deltaThetaR = -(new_right_encoder - old_right_encoder) * tick_rad;
+    deltaThetaL = (new_left_encoder - old_left_encoder) * tick_rad;
+//       Serial.print("left: ");
+//      Serial.println(deltaThetaL*1000);
+//      Serial.print("right: ");
+//      Serial.println(deltaThetaR*1000);
+
+//    xNew = xOld + cos(phiOld)*(r/2)*(deltaThetaR + deltaThetaL);
+//    yNew = yOld + sin(phiOld) * (r/2)*(deltaThetaR + deltaThetaL);
+//    phiNew = phiOld + (r/d)*(deltaThetaR - deltaThetaL);
+//
+//    xOld = xNew;
+//    yOld = yNew;
+  //}
+//  phiOld2 = phiOld;
+//  phiOld = phiNew;
+
+  //pid(left_wheel_theta, target_left_angle, right_wheel_theta, target_right_angle, timeNow/1000000);
+  
+//   circleRoutine(float current_angle_L, float target_angle_L, float current_angle_R, float target_angle_R, float currentTime, float circle_radius)
+
+
+
+  // ADD RIGHT 
+  if(right_act_signal < 0){
+    right_motor_direction = HIGH;
+  }
+  if(right_act_signal > 0){
+    right_motor_direction = LOW;
+  }
+
+  // ADD LEFT
+  if(left_act_signal < 0){
+    left_motor_direction = HIGH;
+  }
+  if(left_act_signal > 0){
+    left_motor_direction = LOW;
+  }
+
+  
+  
+  //// digitalWrite sets pin 7 HIGH or LOW for rotation direction and analogWrite sets pin 9 for PWM duty cycle value ///////
+  digitalWrite(right_dir_pin, right_motor_direction);  // right wheel
+  digitalWrite(left_dir_pin, left_motor_direction);  // left wheel
+  analogWrite(9, abs(right_act_signal)); //right whell
+  analogWrite(10, abs(left_act_signal));  //left wheel
+
+}
+  //Serial.println(state);
+  
+
+float wheelSlip(float master_current, float val){
+
+    if (master_current < (pi/2)){
+    if (val > 25) {
+      val = 25;
+    } 
+  }
+  else if (master_current < (pi)){
+      if (val >37.5 ) {
+        val = 37.5;
+      }
+  }
+  else if (master_current < (pi*(3/2))){
+      if (val > 50) {
+        val = 50;
+      }
+  }
+  else if (master_current < (pi*(2))){
+      if (val > 62.5) {
+        val = 62.5;
+      }
+  }
+  else if (master_current < (pi*(5/2))){
+      if (val > 75) {
+        val = 75;
+      }
+  }
+  else if (master_current < (pi*(6/2))){
+      if (val > 87.5) {
+        val = 87.5;
+      }
+  }    
+  else if (master_current < (pi*(7/2))){
+      if (val > 100) {
+        val = 100;
+      }
+  } 
+  else if (master_current < (pi*(8/2))){
+      if (val > 112.5) {
+        val = 112.5;
+      }
+  }   
+  else if (master_current < (pi*(9/2))){
+      if (val > 125) {
+        val = 125;
+      }
+  }
+  else if (master_current < (pi*(10/2))){
+      if (val > 137.5) {
+        val = 137.5;
+      }
+  }
+  else if (master_current < (pi*(11/2))){
+      if (val > 150) {
+        val = 150;
+      }
+  }   
+  else if (master_current < (pi*(12/2))){
+      if (val > 162.5) {
+        val = 162.5;
+      }
+  }   
+  else if (master_current < (pi*(13/2))){
+      if (val > 175) {
+        val = 175;
+      }
+  }   
+  else if (master_current < (pi*(14/2))){
+      if (val > 187.5) {
+        val = 187.5;
+      }
+  }           
+  else if (master_current < (pi*(15/2))){
+      if (val > 200) {
+        val = 200;
+      }
+  }       
+  else if (master_current < (pi*(16/2))){
+      if (val > 212.5) {
+        val = 212.5;
+      }
+  }
+  else if (master_current < (pi*(17/2))){
+      if (val > 225) {
+        val = 225;
+      }
+  }
+  else if (master_current < (pi*(18/2))){
+      if (val > 237.5) {
+        val = 237.5;
+      }
+  }     
+  else{
+    if (val > 250) {
+        val = 250;
+      }
+  }
+  return val;
+  }
+float wheelSlipBrake(float error_master, float master_act_signal){
+  
+  if (error_master < (pi*(10/2))){
+    if (master_act_signal > 250) {
+      master_act_signal= 250;
+    }
+ }
+if (error_master < (pi*(9/2))){
+    if (master_act_signal > 225) {
+      master_act_signal= 225;
+    }
+ }
+ if (error_master < (pi*(8/2))){
+    if (master_act_signal > 200) {
+      master_act_signal= 200;
+    }
+ }
+ if (error_master < (pi*(7/2))){
+    if (master_act_signal > 175) {
+      master_act_signal = 175;
+    }
+ }  
+ if (error_master < (pi*(6/2))){
+    if (master_act_signal > 150) {
+      master_act_signal = 150;
+    }
+ }  
+ if (error_master < (pi*(5/2))){
+    if (master_act_signal > 125) {
+      master_act_signal = 125;
+    }
+ }
+ if (error_master < (pi*(4/2))){
+    if (master_act_signal > 100) {
+      master_act_signal = 100;
+    }
+ }
+ if (error_master < (pi*(3/2))){
+    if (master_act_signal > 75) {
+      master_act_signal = 75;
+    }
+ }
+ if (error_master < (pi*(2/2))){
+    if (master_act_signal > 50) {
+      master_act_signal = 50;
+    }
+ }
+ if (error_master < (pi*(1/2))){
+    if (master_act_signal > 25) {
+      master_act_signal = 25;
+    }
+ }
+ return master_act_signal;
+}
