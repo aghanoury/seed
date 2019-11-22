@@ -1,4 +1,4 @@
-# Comms Class - Finale
+# Comms - Finale
 
 The past assignments were key challenges that helped develop the foundation for communications. In demo 1, we developed the necessary lower-level protocols needed for basic command and control. It was also a great time for establishing the accruacy of our control algorithms. In demo 2, we abstracted procedures to simple commands and protocols
 
