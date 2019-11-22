@@ -1,5 +1,6 @@
 from picamera import PiCamera
 import os
+import time
 
 class Capturer:
     def __init__(self):
@@ -12,6 +13,8 @@ class Capturer:
         self.camera.exposure_mode = 'off'
         self.camera.shutter_speed = 10000
         self.camera.awb_mode = 'off'
+        self.camera.iso = 1600
+        
         self.marker_detection = {}
         self.folder = 'Captures'
 
@@ -19,17 +22,18 @@ class Capturer:
             os.mkdir(self.folder)
         except FileExistsError:
             pass
-            
-        self.count = 0;
-    
+                
     def capture_loop(self):
         val = ''
         while True:
             val = input("Capture Image? q to quit")
             if val == 'q':
                 break
-            self.camera.capture(os.path.join(self.folder, '{}.png'.format(self.count)))
-            self.count += 1
+            capture()
+            
+    
+    def capture(self):
+        self.camera.capture(os.path.join(self.folder, '{}.png'.format(time.time())), format='jpeg', use_video_port=True)
 
 c = Capturer()
 c.capture_loop()

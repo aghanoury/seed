@@ -27,7 +27,7 @@ class Finder:
         self.camera.resolution = (800, 600)
         #self.camera.resolution = (1920, 1080)
         self.camera.exposure_mode = 'off'
-        self.camera.shutter_speed = 7000
+        self.camera.shutter_speed = 10000
         self.camera.awb_mode = 'off'
         self.marker_detection = {}
         self.camera.iso = 1600
@@ -67,7 +67,7 @@ class Finder:
         marker_width = 76.2
         # Image is captured to bit stream and decoded
         img_stream = io.BytesIO()
-        self.camera.capture(img_stream, 'jpeg')
+        self.camera.capture(img_stream, format='jpeg', use_video_port=True)
         detect_time = time.time();
         img_stream.seek(0)
         img_bytes = np.asarray(bytearray(img_stream.read()), dtype=np.uint8)
