@@ -8,12 +8,16 @@ import time
 import struct
 import threading
 from subprocess import Popen, PIPE
+from ..Finder.Finder import Finder
 import RPi.GPIO as gpio
 
 
 
 
 class Comms(object):
+
+    gpio.setmode(gpio.BCM)
+    gpio.setup(17, gpio.IN)
     
     lcd = None # lcd object
     bus = None # bus obj
@@ -45,6 +49,9 @@ class Comms(object):
     commands['stop'] = STOP
 
  
+    f = Finder()
+
+
 
     def __init__(self, init_string=None, r=None, d=None, pinout=17):
         
@@ -74,25 +81,29 @@ class Comms(object):
         self.d = d or self.d
         self.state = self.NEUTRAL
         self.did_send_packet = False
+
+        # deprecate
         self.thread = threading.Thread(target=self.state_thread)
 
         print("""Initialized Comms with the following Robot Parameters
 Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
     
+
+    # deprecate
     def start_state_detection(self):
         self.thread.start()
 
+    # deprecate
     def state_thread(self,delay=0.25):
         while True:
             self.scan_state()
             time.sleep(delay)
     
-    
+    # deprecate
     def scan_state(self, timeout=15):
-        
         print("broken function")
 
-
+    # deprecate?
     def is_moving(self):
         if self.state != self.NEUTRAL:
             return False
@@ -128,13 +139,9 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
             print("Error setting screen color")
         
 
-    # def write_to_lcd(self, message): FIXME
-
-    # def state_detect_thread_start(self, interval=0.25):
-    #     self.thread.start(interval)
-    # def state_thread(self, interval):
         
     # extraneous function, future version may deprecate
+    # deprecate 
     def input_handler(self, command):
 
         # empty string?
@@ -154,7 +161,7 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
             self.lcd.clear()
 
     
-    # currently broken, don't use
+    # deprecate
     def getData(self, val):
         if val == self.READ_ANGLE:
             response = self.bus.read_i2c_block_data(self.address, val, 4)
@@ -163,12 +170,88 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
             print(val)
             return val
 
-    # hot commands
-    def search(self):
-        angle1 = 2*np.pi
-        theta = angle1 * self.d / self.r
-        self._sendData([self.SEARCH, float(theta), float(theta)])
-        print('SENT SIG SEARCH')
+    def wait(self, delay=0.3, timeout=15):
+        timeout = time.time() + timeout
+        time.sleep(delay)
+        while gpio.input(17) == False or self.did_send_packet == False:
+            if time.time() > timeout:
+                print("FAILED TO VERIFY MOTION TERMINATION\nEXITING")
+                exit(-1) 
+
+
+    # movement commands
+
+    def search(self, direction, timeout=25, angle_delta=25):
+        # try:
+        timeout = time.time() + timeout
+        self.f.find_markers()
+        # com.search() 
+        # begin serach
+        while self.f.did_detect == False:
+            if direction == 'r':
+                self.rotate(-angle_delta)
+            else:
+                self.rotate(angle_delta)
+        
+            self.wait(delay=0.2)
+            self.f.find_markers()
+            # f.find_markers()
+            if time.time() > timeout:
+                print('Timeout')
+                return False
+        return True
+        # except:
+            # print('wack')
+            # return False
+
+    def find_closest_not_complete(self, direction, points_found, overshoot=0.2, offset=0.3048):
+        if self.search(direction) == False:
+            print("Could not find markers, returning")
+            return False
+
+        result = self.f.markers
+        if len(result) == 0: 
+            print("marker list is empty, returning")
+            return False
+
+        min_dis = 100000
+        closest_id = None
+
+
+        print("Found these markers", points_found)
+        for i in result:
+            print(i)
+            if i not in points_found[1:]:
+                if result[i][0] < min_dis:
+                    min_dis = result[i][0]
+                    closest_id = i
+
+
+        distance = result[closest_id][0]/100
+        angle = result[closest_id][1] * 180/np.pi
+        points_found.append(closest_id)
+
+        print("Distance {} angle {}".format(distance, angle))
+
+        if direction == 'l':
+            angle += np.arctan(offset/distance)*180/np.pi
+        else:
+            angle += np.arctan(offset/distance)*180/np.pi
+
+        distance = np.sqrt(distance**2 + 0.3048**2) + overshoot
+
+        print("Distance {} angle {}".format(distance, angle))
+
+        return [float(distance), float(-angle), points_found]
+
+
+
+    # # this function might be usless
+    # def search(self):
+    #     angle1 = 2*np.pi
+    #     theta = angle1 * self.d / self.r
+    #     self._sendData([self.SEARCH, float(theta), float(theta)])
+    #     print('SENT SIG SEARCH')
 
     def stop(self):
         self._sendData([self.LINEAR_TRAVERSE, 0.0, 0.0])

@@ -90,6 +90,7 @@ class Finder:
         
         # Run if markers are detected
         if detection[1] is not None:
+            self.markers = dict()
             self.did_detect = True
             for i in range(len(detection[1])):
                 marker_id = detection[1][i][0]
@@ -114,16 +115,18 @@ class Finder:
                 # Angle Correction
                 angle_h = angle_h*1.1136 - 0.0109
                 
-                # If the marker has been detected this cycle, average the values
-                if marker_id in self.markers and self.markers[marker_id][3] == detect_time:
-                    m = self.markers[marker_id]
-                    z_avg = (m[0] + z)/2
-                    h_avg = (m[1] + angle_h)/2
-                    v_avg = (m[2] + angle_v)/2
-                    self.markers[marker_id] = (z_avg, h_avg, v_avg, detect_time)
-                # Otherwise update marker entries in dictionary
-                else:
-                    self.markers[marker_id] = (z, angle_h, angle_v, detect_time)
+                # # If the marker has been detected this cycle, average the values
+                # if marker_id in self.markers and self.markers[marker_id][3] == detect_time:
+                #     m = self.markers[marker_id]
+                #     z_avg = (m[0] + z)/2
+                #     h_avg = (m[1] + angle_h)/2
+                #     v_avg = (m[2] + angle_v)/2
+                #     self.markers[marker_id] = (z_avg, h_avg, v_avg, detect_time)
+                # # Otherwise update marker entries in dictionary
+                # else:
+                #     self.markers[marker_id] = (z, angle_h, angle_v, detect_time)
+                self.markers[marker_id] = (z, angle_h, angle_v, detect_time)
         else:
+            self.markers = []
             self.did_detect = False
                 
