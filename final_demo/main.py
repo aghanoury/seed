@@ -218,14 +218,14 @@ if __name__ == "__main__":
             
             try:
                 counter = 0
-                [distance, angle, points_found] = com.find_closest_not_complete('l', points_found, overshoot=0.33, offset=0.25)
+                [distance, angle, points_found] = com.find_closest_not_complete('l', points_found, overshoot=0.23, offset=0.3)
                 com.rotate(angle)
                 com.wait()
                 com.linTraverse(distance,meters=True)
                 com.wait()
                 while True:
                     counter += 1
-                    [distance, angle, points_found] = com.find_closest_not_complete('l', points_found, overshoot=0.33, offset=0.25)
+                    [distance, angle, points_found] = com.find_closest_not_complete('l', points_found, overshoot=0.23, offset=0.3)
                     com.rotate(angle)
                     com.wait()
                     com.linTraverse(distance,meters=True)
