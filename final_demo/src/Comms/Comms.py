@@ -52,7 +52,6 @@ class Comms(object):
     f = Finder()
 
 
-
     def __init__(self, init_string=None, r=None, d=None, pinout=17):
         
         # init lcd display
@@ -82,23 +81,11 @@ class Comms(object):
         self.state = self.NEUTRAL
         self.did_send_packet = False
 
-        # deprecate
-        self.thread = threading.Thread(target=self.state_thread)
 
         print("""Initialized Comms with the following Robot Parameters
 Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
     
 
-    # deprecate
-    def start_state_detection(self):
-        self.thread.start()
-
-    # deprecate
-    def state_thread(self,delay=0.25):
-        while True:
-            self.scan_state()
-            time.sleep(delay)
-    
     # deprecate
     def scan_state(self, timeout=15):
         print("broken function")
@@ -169,6 +156,7 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
             val = struct.unpack('f',b)
             print(val)
             return val
+
 
     def wait(self, delay=0.3, timeout=15):
         timeout = time.time() + timeout
@@ -340,59 +328,8 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
                 print("Failed to transmit packet, did arduino crash?")
                 print("attempting to send again in 0.8 sec")
                 time.sleep(0.8)
-
-        
-        return
-
-
-
-
-
-        """ Deprecated below """
-        if isinstance(data, int):
-            self.bus.write_byte_data(self.address, 0, data) 
-            response = self.bus.read_byte_data(self.address,2)
-            print("Response:", response)
-            # write message to lcd
-            self.lcd.clear()
-            self.lcd.message = "sent: {}\ngot: {}".format(data, response)
-
-
-        elif isinstance(data, str):
-
-            # requesting for pot?
-            if data == 'pot':
-                # make a read request with header of 3
-                response = bus.read_i2c_block_data(address, 3, 2)
-
-                # we expect to get two bytes back. 
-                # first is upper byte 16-bit analog reading
-                # next is lower byte
-                value = (response[0] << 8) + response[1]
-                value = round(value/1023 * 5, 2)
-
-                # write to lcd
-                lcd.clear()
-                lcd.message = str(value) + ' V'
-                return
-            try:
-                byte_array = [ord(i) for i in data]
-                bus.write_i2c_block_data(address, 1, byte_array)
-                time.sleep(0.1)
-                response = bus.read_i2c_block_data(address, 2,len(byte_array))
-                payload = ''
-                for i in response:
-                    payload += chr(i)
-            except:
-                print("Failed to do something useful")
-                payload = 'Failed to send/receive'
                 
-            lcd.clear()
-            lcd.message = payload
-            # except:
-        
-
-        print("sendData Function not fully implemeneted yet")
+        return
 
 
 
