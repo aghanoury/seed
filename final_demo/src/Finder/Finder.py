@@ -27,7 +27,7 @@ class Finder:
         self.camera.resolution = (800, 600)
         #self.camera.resolution = (1920, 1080)
         self.camera.exposure_mode = 'off'
-        self.camera.shutter_speed = 10000
+        self.camera.shutter_speed = 20000
         self.camera.awb_mode = 'off'
         self.marker_detection = {}
         self.camera.iso = 1600
