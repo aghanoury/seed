@@ -175,19 +175,23 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
         self.f.find_markers()
         # com.search() 
         # begin serach
-        while self.f.did_detect == False:
-            if direction == 'r':
-                self.rotate(-angle_delta)
-            else:
-                self.rotate(angle_delta)
-        
-            self.wait(delay=0.2)
-            self.f.find_markers()
-            # f.find_markers()
-            if time.time() > timeout:
-                print('Timeout')
-                return False
-        return True
+        try:
+            while self.f.did_detect == False:
+                if direction == 'r':
+                    self.rotate(-angle_delta)
+                else:
+                    self.rotate(angle_delta)
+            
+                self.wait(delay=0.2)
+                self.f.find_markers()
+                # f.find_markers()
+                if time.time() > timeout:
+                    print('Timeout')
+                    return False
+            return True
+        except KeyboardInterrupt:
+            print("Exited search")
+            return
         # except:
             # print('wack')
             # return False
@@ -242,7 +246,7 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
     #     print('SENT SIG SEARCH')
 
     def stop(self):
-        self._sendData([self.LINEAR_TRAVERSE, 0.0, 0.0])
+        self._sendData([self.STOP, 0.0, 0.0])
         print("SENT SIG STOP")
 
     def rotate(self, angle, radians=False):
@@ -324,11 +328,14 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
                 self.bus.write_i2c_block_data(self.address, data[0], payload)
                 self.did_send_packet = True
                 break
+            except KeyboardInterrupt:
+                break
             except:
+                delay = 1.4
                 print("Failed to transmit packet, did arduino crash?")
-                print("attempting to send again in 0.8 sec")
-                time.sleep(0.8)
-                
+                print("attempting to send again in {} sec".format(delay))
+                time.sleep(delay)
+            
         return
 
 

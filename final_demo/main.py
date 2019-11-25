@@ -88,7 +88,7 @@ if __name__ == "__main__":
             com.stop()
 
         elif command == com.SEARCH:
-            com.search()
+            com.search('l')
 
 
 
