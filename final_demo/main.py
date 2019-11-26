@@ -97,9 +97,8 @@ while True:
         if direction == '' or 'l':
             com.circularTraverse(target_radius)
         elif direction == 'r':
-            com.circularTraverse(target_radius, direction='right')
-        else:
-            print("invalid direction")
+            com.circularTraverse(target_radius, direction=direction)
+
 
 
 
