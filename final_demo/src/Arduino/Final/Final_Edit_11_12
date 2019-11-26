@@ -568,11 +568,10 @@ void receiveEvent() {
   else if (instruction == ROTATE) {
     target_left_angle = *(float*) &packets[2];
     target_right_angle = *(float*) &packets[6];
+    state = rotating;
     if (abs(target_left_angle) < 1.6){
       state = small_angle;
-      return;
     }
-    state = rotating;
   }
 
 //  
