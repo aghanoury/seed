@@ -86,26 +86,6 @@ class Comms(object):
 Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
     
 
-    # deprecate
-    def scan_state(self, timeout=15):
-        print("broken function")
-
-    # deprecate?
-    def is_moving(self):
-        if self.state != self.NEUTRAL:
-            return False
-        else:
-            return True
-    
-    # set up functions
-    def startup_color_sequence(self):
-        self.set_screen_color("100 0 0")
-        time.sleep(0.25)
-        self.set_screen_color("0 100 0")
-        time.sleep(0.25)
-        self.set_screen_color("0 0 100")
-        time.sleep(0.25)
-        self.set_screen_color("100 100 100")
 
     def set_screen_color(self, rgb):
         # rgb should be a list containing the rgb values respectively
@@ -266,7 +246,7 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
         self._sendData(payload)
         print("TRAVERSING {} meters.".format(distance))
 
-    def circularTraverse(self, radius, direction="left",portion=1):
+    def circularTraverse(self, radius, direction="l",portion=1):
         # direction will usually be left if traversing
         # course counter clockwise
         # portion is the amount of circle we want to travel
@@ -277,10 +257,10 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
         shorter = 2*np.pi*(radius-self.d/2)*2
         longer  = 2*np.pi*(radius+self.d/2)*2
 
-        if direction == "left":
+        if direction == "l":
             theta_l = shorter/self.r
             theta_r = longer/self.r
-        elif direction == "right":
+        elif direction == "r":
             theta_r = shorter/self.r
             theta_l = longer/self.r
         else:
@@ -294,39 +274,48 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
         self._sendData(payload)
 
         
-    # the most important
+    # the most important of importance
     def _sendData(self, data):
         
-        self.did_send_packet = False
-        payload = []
 
-        if type(data) != list:
+        # packet is structured as follows:
+        # byte 0: operation (added at the end)
+        # byte 1: number of 1's in binary data
+        # byte 2-5: float 1
+        # byte 6-9: float 2
+ 
+
+        # set the flag to false
+        self.did_send_packet = False
+        payload = [] # prepare packet contruc
+
+        if type(data) != list: # we need a list
             print("data is not a list")
             return
             
         payload.append(len(data[1:]))
+
         # convert floating point values
         for float_val in data[1:]:
 
             if type(float_val) != float:
-                print("Data element is not of type float")
+                print("Data element is type {}, not float".format(type(float_val)))
                 print("Send Operation aborted")
                 return
 
             b = struct.pack('f', float_val)
             t = struct.unpack('BBBB', b)
-            for byte in t:
-                payload.append(byte)
+            payload += t
 
         if len(payload) > 32:
             print("Attempting to send more than 32 bytes\nAborting Send")
             return
 
-        # enter loop until packet sends succ-essfully
+        # enter loop until packet sends successfully
         while True:
             try:
                 self.bus.write_i2c_block_data(self.address, data[0], payload)
-                self.did_send_packet = True
+                self.did_send_packet = True # set the flag to true
                 break
             except KeyboardInterrupt:
                 break
@@ -337,26 +326,3 @@ Wheel Radius: {} m & Wheel Distance: {} m""".format(self.r, self.d))
                 time.sleep(delay)
             
         return
-
-
-
-if __name__ == "__main__":
-
-
-    obj = Communicator("Mini Project\nPrototyping")
-    
-    while True:
-        command = input("Enter a command: ")
-        if command == 'exit':
-            break
-
-        # first try to convert input to an int
-       
-        try:
-            command = int(command)
-        except:
-            pass
-
-        obj.input_handler(command)
-    
-
