@@ -213,6 +213,7 @@ if __name__ == "__main__":
 
 
         elif command == FINALE:
+            t_start = time.time()
             marker_count = int(input("Num of markers: "))
             points_found = []
             
@@ -233,9 +234,12 @@ if __name__ == "__main__":
 
                     if counter == marker_count:
                         com.lcd.message = "CREAMSOUP\nSTRIKES AGAIN"
+                        t_done = time.time()
+                        print(t_done-t_start, "seconds")
                         break
             except KeyboardInterrupt:
                 com.stop()
+        
 
 
 
