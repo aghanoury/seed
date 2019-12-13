@@ -1,6 +1,6 @@
 # Final Demo
-The official repository of all Final Demo source code
-### Locations
+Final Demo source code. Bot did alright.
+
 - [Arduino Control](src/Arduino/)
 - [Comms](src/Comms/)
 - [Computer Vision](src/Finder)
