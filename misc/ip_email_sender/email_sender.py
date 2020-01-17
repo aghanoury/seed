@@ -5,12 +5,12 @@ from socket import gaierror
 import string
 import time
 
+# Copied from somewhere online, modified by Pooya
+
+
 # This script attepts to retrieve the IP address of a specified interface.
 # If successful it then emails the retrieved IP to a specified email address
 
-#	FILL OUT THE VALUES BETWEEN THE COMMENT BLOCKS
-#######################################################################
-# Specify the sender credentials and recipient email address here
 SENDER = {}
 SENDER['addr'] = 'robobobandy69@gmail.com' 
 SENDER['pass'] = 'creamsoup'
